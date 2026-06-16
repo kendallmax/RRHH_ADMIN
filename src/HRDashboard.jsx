@@ -1259,964 +1259,964 @@ export default function HRDashboard({ session }) {
           </div>
         </header>
 
-      {activeView === 'dashboard' ? (
-        <>
-          <section className="stats-grid">
-            <StatCard label="Colaboradores activos" value={employees.filter((employee) => employee.is_active !== false).length} icon={<Users />} />
-            <StatCard label="Marcas consultadas" value={stats.totalRecords} icon={<FileText />} />
-            <StatCard label="Revision requerida" value={stats.pendingReview} icon={<ShieldAlert />} />
-            <StatCard label="Extras sugeridas" value={stats.pendingOvertime} icon={<BarChart3 />} />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Resumen operativo</h2>
-                <p>El dashboard usa los resultados que consultes en Marcas o Calculo de horas. No carga registros masivos al entrar.</p>
-              </div>
-              <div className="toolbar">
-                <button className="primary-button" onClick={() => setActiveView('marcas')}>
-                  <Search />
-                  <span>Consultar marcas</span>
-                </button>
-              </div>
-            </div>
-          </section>
-        </>
-      ) : activeView === 'marcas' ? (
-        <>
-          <section className="stats-grid">
-            <StatCard label="Registros" value={stats.totalRecords} icon={<FileText />} />
-            <StatCard label="Empleados" value={stats.totalEmployees} icon={<Users />} />
-            <StatCard label="Entradas" value={stats.totalEntries} icon={<CalendarDays />} />
-            <StatCard label="Salidas" value={stats.totalExits} icon={<MapPinned />} />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Filtros de consulta</h2>
-                <p>Los resultados se agrupan por empleado y luego por fecha ascendente.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={refreshReport} disabled={isRefreshing}>
-                  {isRefreshing ? <Loader2 className="spin" /> : <RefreshCcw />}
-                  <span>{isRefreshing ? 'Actualizando...' : 'Actualizar'}</span>
-                </button>
-                <button className="secondary-button" onClick={handleExportExcel} disabled={!filteredRecords.length}>
-                  <FileSpreadsheet />
-                  <span>Exportar Excel</span>
-                </button>
-                <button className="primary-button" onClick={handleExportPdf} disabled={!filteredRecords.length}>
-                  <Download />
-                  <span>Exportar PDF</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-grid">
-              <label>
-                Empleado
-                <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)}>
-                  <option value="">Todos los empleados</option>
-                  {employees.map((employee) => (
-                    <option key={employee.user_id} value={employee.user_id}>
-                      {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Fecha inicial
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </label>
-
-              <label>
-                Fecha final
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </label>
-
-              <label>
-                Buscar texto
-                <span className="input-shell">
-                  <Search />
-                  <input
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Empleado, correo, ubicacion..."
-                  />
-                </span>
-              </label>
-            </div>
-
-            <div className="filter-actions">
-              <button className="primary-button" onClick={refreshReport} disabled={isRefreshing}>
-                {isRefreshing ? <Loader2 className="spin" /> : <Search />}
-                <span>Aplicar filtros</span>
-              </button>
-            </div>
-          </section>
-
-          {errorMsg ? <div className="panel-error">{errorMsg}</div> : null}
-          {markCorrectionError ? <div className="panel-error">{markCorrectionError}</div> : null}
-          {markCorrectionFeedback ? <div className="panel-success">{markCorrectionFeedback}</div> : null}
-
-          {isLoading ? (
-            <div className="panel-loading">
-              <Loader2 className="spin" />
-              <span>Cargando registros desde Supabase...</span>
-            </div>
-          ) : groupedRecords.length ? (
-            <section className="groups-stack">
-              {groupedRecords.map((employeeGroup) => (
-                <article key={employeeGroup.userId} className="employee-card">
-                  <div className="employee-card-header">
-                    <div>
-                      <h3>{employeeGroup.employeeName}</h3>
-                      <p>{employeeGroup.employeeEmail}</p>
-                    </div>
-                    <span className="employee-count">{employeeGroup.total} registros</span>
-                  </div>
-
-                  <div className="dates-stack">
-                    {employeeGroup.dates.map((dateGroup) => (
-                      <section key={`${employeeGroup.userId}-${dateGroup.dateKey}`} className="date-card">
-                        <div className="date-card-header">
-                          <h4>{dateGroup.dateLabel}</h4>
-                          <span>{dateGroup.records.length} movimientos</span>
-                        </div>
-
-                        <div className="table-shell">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Hora</th>
-                                <th>Tipo</th>
-                                <th>Ubicacion</th>
-                                <th>Descripcion</th>
-                                <th>Coordenadas</th>
-                                <th>IP</th>
-                                <th>Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {dateGroup.records.map((record) => (
-                                <tr key={record.id}>
-                                  <td>{record.timeLabel}</td>
-                                  <td>
-                                    <span className={`type-pill type-${record.tipo}`}>
-                                      {record.tipo}
-                                    </span>
-                                  </td>
-                                  <td>{record.ubicacion}</td>
-                                  <td>{record.descripcion || 'Sin detalle'}</td>
-                                  <td>
-                                    {record.latitud && record.longitud ? (
-                                      <a
-                                        href={`https://www.google.com/maps?q=${record.latitud},${record.longitud}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="map-link"
-                                      >
-                                        {record.latitud}, {record.longitud}
-                                      </a>
-                                    ) : (
-                                      'Sin coordenadas'
-                                    )}
-                                  </td>
-                                  <td>{record.ip || 'Sin IP'}</td>
-                                  <td>
-                                    <button
-                                      className="secondary-button compact-action"
-                                      type="button"
-                                      onClick={() => openMarkCorrectionModal(record)}
-                                    >
-                                      <PencilLine />
-                                      <span>Corregir</span>
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </article>
-              ))}
+        {activeView === 'dashboard' ? (
+          <>
+            <section className="stats-grid">
+              <StatCard label="Colaboradores activos" value={employees.filter((employee) => employee.is_active !== false).length} icon={<Users />} />
+              <StatCard label="Marcas consultadas" value={stats.totalRecords} icon={<FileText />} />
+              <StatCard label="Revision requerida" value={stats.pendingReview} icon={<ShieldAlert />} />
+              <StatCard label="Extras sugeridas" value={stats.pendingOvertime} icon={<BarChart3 />} />
             </section>
-          ) : (
-            <div className="empty-state">
-              <h3>No hay registros para los filtros actuales</h3>
-              <p>Prueba ampliando el rango de fechas o seleccionando otro empleado.</p>
-            </div>
-          )}
-        </>
-      ) : activeView === 'horas' ? (
-        <>
-          <ConsultationFilters
-            employees={employees}
-            selectedEmployee={selectedEmployee}
-            setSelectedEmployee={setSelectedEmployee}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            searchText={searchText}
-            setSearchText={setSearchText}
-            onSearch={refreshReport}
-            isRefreshing={isRefreshing}
-          />
 
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Calculo inicial por dia</h2>
-                <p>Interpretacion por dia usando las reglas configuradas. Puedes guardar el resultado para auditoria y aprobaciones.</p>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Resumen operativo</h2>
+                  <p>El dashboard usa los resultados que consultes en Marcas o Calculo de horas. No carga registros masivos al entrar.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="primary-button" onClick={() => setActiveView('marcas')}>
+                    <Search />
+                    <span>Consultar marcas</span>
+                  </button>
+                </div>
               </div>
-              <div className="toolbar">
-                <button
-                  className="secondary-button"
-                  onClick={() => handleBackendHourCalculation({ persistResults: false })}
-                  disabled={isBackendCalculating}
-                >
-                  {isBackendCalculating ? <Loader2 className="spin" /> : <Calculator />}
-                  <span>{isBackendCalculating ? 'Calculando...' : 'Calcular backend'}</span>
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => handleBackendHourCalculation({ persistResults: true })}
-                  disabled={isBackendCalculating}
-                >
-                  {isBackendCalculating ? <Loader2 className="spin" /> : <ShieldCheck />}
-                  <span>Calcular y guardar backend</span>
-                </button>
-                <button
-                  className="primary-button"
-                  onClick={handleSaveHourCalculations}
-                  disabled={!calculatedRows.length || isCalculationSaving}
-                >
-                  {isCalculationSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
-                  <span>{isCalculationSaving ? 'Guardando...' : 'Guardar calculos'}</span>
-                </button>
-              </div>
-            </div>
-            {calculationError ? <div className="panel-error">{calculationError}</div> : null}
-            {calculationFeedback ? <div className="panel-success">{calculationFeedback}</div> : null}
-            <HoursTable rows={calculatedRows} emptyTitle="Consulta marcas para calcular horas" />
-          </section>
-        </>
-      ) : activeView === 'aprobacion' ? (
-        <>
-          <ConsultationFilters
-            employees={employees}
-            selectedEmployee={selectedEmployee}
-            setSelectedEmployee={setSelectedEmployee}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            searchText={searchText}
-            setSearchText={setSearchText}
-            onSearch={refreshReport}
-            isRefreshing={isRefreshing}
-          />
+            </section>
+          </>
+        ) : activeView === 'marcas' ? (
+          <>
+            <section className="stats-grid">
+              <StatCard label="Registros" value={stats.totalRecords} icon={<FileText />} />
+              <StatCard label="Empleados" value={stats.totalEmployees} icon={<Users />} />
+              <StatCard label="Entradas" value={stats.totalEntries} icon={<CalendarDays />} />
+              <StatCard label="Salidas" value={stats.totalExits} icon={<MapPinned />} />
+            </section>
 
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Horas extra pendientes</h2>
-                <p>Flujo inicial de revision. La aprobacion persistente queda preparada para la tabla de aprobaciones.</p>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Filtros de consulta</h2>
+                  <p>Los resultados se agrupan por empleado y luego por fecha ascendente.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={refreshReport} disabled={isRefreshing}>
+                    {isRefreshing ? <Loader2 className="spin" /> : <RefreshCcw />}
+                    <span>{isRefreshing ? 'Actualizando...' : 'Actualizar'}</span>
+                  </button>
+                  <button className="secondary-button" onClick={handleExportExcel} disabled={!filteredRecords.length}>
+                    <FileSpreadsheet />
+                    <span>Exportar Excel</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportPdf} disabled={!filteredRecords.length}>
+                    <Download />
+                    <span>Exportar PDF</span>
+                  </button>
+                </div>
               </div>
-            </div>
-            {approvalError ? <div className="panel-error">{approvalError}</div> : null}
-            {approvalFeedback ? <div className="panel-success">{approvalFeedback}</div> : null}
-            <ApprovalTable
-              rows={calculatedRows.filter((row) => row.overtimeHours > 0 || row.doubleHours > 0)}
-              onStatusChange={handleApprovalStatusChange}
-              onOpenDetail={openApprovalDetail}
-              isSaving={isApprovalSaving}
+
+              <div className="filter-grid">
+                <label>
+                  Empleado
+                  <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)}>
+                    <option value="">Todos los empleados</option>
+                    {employees.map((employee) => (
+                      <option key={employee.user_id} value={employee.user_id}>
+                        {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Fecha inicial
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </label>
+
+                <label>
+                  Fecha final
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </label>
+
+                <label>
+                  Buscar texto
+                  <span className="input-shell">
+                    <Search />
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      placeholder="Empleado, correo, ubicacion..."
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <div className="filter-actions">
+                <button className="primary-button" onClick={refreshReport} disabled={isRefreshing}>
+                  {isRefreshing ? <Loader2 className="spin" /> : <Search />}
+                  <span>Aplicar filtros</span>
+                </button>
+              </div>
+            </section>
+
+            {errorMsg ? <div className="panel-error">{errorMsg}</div> : null}
+            {markCorrectionError ? <div className="panel-error">{markCorrectionError}</div> : null}
+            {markCorrectionFeedback ? <div className="panel-success">{markCorrectionFeedback}</div> : null}
+
+            {isLoading ? (
+              <div className="panel-loading">
+                <Loader2 className="spin" />
+                <span>Cargando registros desde Supabase...</span>
+              </div>
+            ) : groupedRecords.length ? (
+              <section className="groups-stack">
+                {groupedRecords.map((employeeGroup) => (
+                  <article key={employeeGroup.userId} className="employee-card">
+                    <div className="employee-card-header">
+                      <div>
+                        <h3>{employeeGroup.employeeName}</h3>
+                        <p>{employeeGroup.employeeEmail}</p>
+                      </div>
+                      <span className="employee-count">{employeeGroup.total} registros</span>
+                    </div>
+
+                    <div className="dates-stack">
+                      {employeeGroup.dates.map((dateGroup) => (
+                        <section key={`${employeeGroup.userId}-${dateGroup.dateKey}`} className="date-card">
+                          <div className="date-card-header">
+                            <h4>{dateGroup.dateLabel}</h4>
+                            <span>{dateGroup.records.length} movimientos</span>
+                          </div>
+
+                          <div className="table-shell">
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Hora</th>
+                                  <th>Tipo</th>
+                                  <th>Ubicacion</th>
+                                  <th>Descripcion</th>
+                                  <th>Coordenadas</th>
+                                  <th>IP</th>
+                                  <th>Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {dateGroup.records.map((record) => (
+                                  <tr key={record.id}>
+                                    <td>{record.timeLabel}</td>
+                                    <td>
+                                      <span className={`type-pill type-${record.tipo}`}>
+                                        {record.tipo}
+                                      </span>
+                                    </td>
+                                    <td>{record.ubicacion}</td>
+                                    <td>{record.descripcion || 'Sin detalle'}</td>
+                                    <td>
+                                      {record.latitud && record.longitud ? (
+                                        <a
+                                          href={`https://www.google.com/maps?q=${record.latitud},${record.longitud}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="map-link"
+                                        >
+                                          {record.latitud}, {record.longitud}
+                                        </a>
+                                      ) : (
+                                        'Sin coordenadas'
+                                      )}
+                                    </td>
+                                    <td>{record.ip || 'Sin IP'}</td>
+                                    <td>
+                                      <button
+                                        className="secondary-button compact-action"
+                                        type="button"
+                                        onClick={() => openMarkCorrectionModal(record)}
+                                      >
+                                        <PencilLine />
+                                        <span>Corregir</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </section>
+            ) : (
+              <div className="empty-state">
+                <h3>No hay registros para los filtros actuales</h3>
+                <p>Prueba ampliando el rango de fechas o seleccionando otro empleado.</p>
+              </div>
+            )}
+          </>
+        ) : activeView === 'horas' ? (
+          <>
+            <ConsultationFilters
+              employees={employees}
+              selectedEmployee={selectedEmployee}
+              setSelectedEmployee={setSelectedEmployee}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              onSearch={refreshReport}
+              isRefreshing={isRefreshing}
             />
-          </section>
-        </>
-      ) : activeView === 'reportes' ? (
-        <>
-          <section className="stats-grid">
-            <StatCard label="Horas trabajadas" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.workedHours, 0))} icon={<Clock />} />
-            <StatCard label="Horas ordinarias" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.regularHours, 0))} icon={<CalendarDays />} />
-            <StatCard label="Horas extra" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.overtimeHours, 0))} icon={<BarChart3 />} />
-            <StatCard label="Horas dobles" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.doubleHours, 0))} icon={<ShieldAlert />} />
-          </section>
 
-          <ConsultationFilters
-            employees={employees}
-            selectedEmployee={selectedEmployee}
-            setSelectedEmployee={setSelectedEmployee}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            searchText={searchText}
-            setSearchText={setSearchText}
-            onSearch={refreshHoursSummaryReport}
-            isRefreshing={isSummaryLoading}
-          />
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Resumen persistido de horas</h2>
-                <p>Consulta totales guardados en Supabase por colaborador, incluyendo aprobaciones e inconsistencias.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={handleExportExcel} disabled={!filteredRecords.length}>
-                  <FileSpreadsheet />
-                  <span>Marcas Excel</span>
-                </button>
-                <button className="primary-button" onClick={handleExportPdf} disabled={!filteredRecords.length}>
-                  <Download />
-                  <span>Marcas PDF</span>
-                </button>
-                <button className="primary-button" onClick={handleExportHoursSummary} disabled={!hoursSummaryRows.length}>
-                  <FileSpreadsheet />
-                  <span>Horas Excel</span>
-                </button>
-              </div>
-            </div>
-            {summaryError ? <div className="panel-error">{summaryError}</div> : null}
-            <HoursSummaryTable rows={hoursSummaryRows} isLoading={isSummaryLoading} />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Reporte para planilla</h2>
-                <p>Ordinarias guardadas y extras/dobles aprobadas para pago, con pendientes separadas.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={refreshPayrollExportReport} disabled={isPayrollExportLoading}>
-                  {isPayrollExportLoading ? <Loader2 className="spin" /> : <Search />}
-                  <span>Cargar planilla</span>
-                </button>
-                <button className="primary-button" onClick={handleExportPayrollReport} disabled={!payrollExportRows.length}>
-                  <FileSpreadsheet />
-                  <span>Planilla Excel</span>
-                </button>
-              </div>
-            </div>
-            {payrollExportError ? <div className="panel-error">{payrollExportError}</div> : null}
-            <PayrollExportTable rows={payrollExportRows} isLoading={isPayrollExportLoading} />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Bitacora de aprobaciones</h2>
-                <p>Historial de cambios aplicados a horas extra y dobles para auditoria administrativa.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={() => refreshApprovalAudit()} disabled={isApprovalAuditLoading}>
-                  {isApprovalAuditLoading ? <Loader2 className="spin" /> : <Search />}
-                  <span>Cargar bitacora</span>
-                </button>
-                <button className="primary-button" onClick={handleExportApprovalAudit} disabled={!approvalAuditRows.length}>
-                  <FileSpreadsheet />
-                  <span>Auditoria Excel</span>
-                </button>
-              </div>
-            </div>
-            {approvalAuditError ? <div className="panel-error">{approvalAuditError}</div> : null}
-            <ApprovalAuditTable rows={approvalAuditRows} isLoading={isApprovalAuditLoading} />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Bitacora de correcciones de marcas</h2>
-                <p>Historial de ajustes administrativos sobre marcas originales, con motivo y responsable.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={() => refreshMarkAudit()} disabled={isMarkAuditLoading}>
-                  {isMarkAuditLoading ? <Loader2 className="spin" /> : <Search />}
-                  <span>Cargar correcciones</span>
-                </button>
-                <button className="primary-button" onClick={handleExportMarkAudit} disabled={!markAuditRows.length}>
-                  <FileSpreadsheet />
-                  <span>Correcciones Excel</span>
-                </button>
-              </div>
-            </div>
-            {markAuditError ? <div className="panel-error">{markAuditError}</div> : null}
-            <MarkAuditTable rows={markAuditRows} isLoading={isMarkAuditLoading} />
-          </section>
-        </>
-      ) : activeView === 'empleados' ? (
-        <>
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Administracion de empleados</h2>
-                <p>Crea, edita o elimina cuentas y define quienes son administradores de RRHH.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={refreshDirectory}>
-                  <RefreshCcw />
-                  <span>Recargar lista</span>
-                </button>
-                <button className="primary-button" onClick={openCreateEmployeeModal}>
-                  <UserPlus />
-                  <span>Nuevo empleado</span>
-                </button>
-              </div>
-            </div>
-
-            {employeeError ? <div className="panel-error">{employeeError}</div> : null}
-            {employeeFeedback ? <div className="panel-success">{employeeFeedback}</div> : null}
-          </section>
-
-          <section className="employee-admin-list">
-            {employees.map((employee) => (
-              <article key={employee.user_id} className="employee-admin-card">
-                <div className="employee-admin-main">
-                  <div>
-                    <h3>{employee.display_name}</h3>
-                    <p>{employee.email}</p>
-                  </div>
-                  <div className="employee-admin-badges">
-                    <span className={employee.is_admin ? 'status-pill status-admin' : 'status-pill'}>
-                      {employee.is_admin ? 'Admin RRHH' : 'Empleado'}
-                    </span>
-                    <span className={employee.is_active ? 'status-pill status-active' : 'status-pill status-inactive'}>
-                      {employee.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Calculo inicial por dia</h2>
+                  <p>Interpretacion por dia usando las reglas configuradas. Puedes guardar el resultado para auditoria y aprobaciones.</p>
                 </div>
-                <div className="employee-admin-meta">
-                  <span>Creado: {employee.created_at ? DATE_TIME_FORMATTER.format(new Date(employee.created_at)) : 'Sin fecha'}</span>
-                  <span>Cedula: {employee.identification || 'Sin registrar'}</span>
-                  <span>Puesto: {employee.position || employee.job_position || 'Sin registrar'}</span>
-                  <span>Ingreso: {employee.hire_date || 'Sin fecha'}</span>
-                </div>
-                <div className="employee-admin-actions">
-                  <button className="secondary-button" onClick={() => openEditEmployeeModal(employee)}>
-                    <PencilLine />
-                    <span>Editar</span>
+                <div className="toolbar">
+                  <button
+                    className="secondary-button"
+                    onClick={() => handleBackendHourCalculation({ persistResults: false })}
+                    disabled={isBackendCalculating}
+                  >
+                    {isBackendCalculating ? <Loader2 className="spin" /> : <Calculator />}
+                    <span>{isBackendCalculating ? 'Calculando...' : 'Calcular backend'}</span>
                   </button>
                   <button
-                    className="danger-button"
-                    onClick={() => handleEmployeeDelete(employee)}
-                    disabled={isEmployeeSaving || employee.user_id === session.user.id}
+                    className="secondary-button"
+                    onClick={() => handleBackendHourCalculation({ persistResults: true })}
+                    disabled={isBackendCalculating}
                   >
-                    <Trash2 />
-                    <span>Eliminar</span>
+                    {isBackendCalculating ? <Loader2 className="spin" /> : <ShieldCheck />}
+                    <span>Calcular y guardar backend</span>
+                  </button>
+                  <button
+                    className="primary-button"
+                    onClick={handleSaveHourCalculations}
+                    disabled={!calculatedRows.length || isCalculationSaving}
+                  >
+                    {isCalculationSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
+                    <span>{isCalculationSaving ? 'Guardando...' : 'Guardar calculos'}</span>
                   </button>
                 </div>
-              </article>
-            ))}
-          </section>
-        </>
-      ) : activeView === 'configuracion' ? (
-        <>
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Reglas de asistencia y horas</h2>
-                <p>Parametros configurables por empresa para ordinarias, extras, dobles, almuerzo y aprobaciones.</p>
               </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={() => refreshAttendanceSettings({ silentFallback: false })}>
-                  <RefreshCcw />
-                  <span>Recargar reglas</span>
-                </button>
-              </div>
-            </div>
-
-            {settingsError ? <div className="panel-error">{settingsError}</div> : null}
-            {settingsFeedback ? <div className="panel-success">{settingsFeedback}</div> : null}
-
-            <SettingsForm
-              settings={attendanceSettings}
-              setSettings={setAttendanceSettings}
-              onSubmit={handleAttendanceSettingsSave}
-              isSaving={isSettingsSaving}
-            />
-          </section>
-
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Cierre de planilla</h2>
-                <p>Bloquea rangos ya revisados para evitar correcciones, aprobaciones o recalculos accidentales.</p>
-              </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={() => refreshPayrollPeriods()} disabled={isPayrollPeriodSaving}>
-                  {isPayrollPeriodSaving ? <Loader2 className="spin" /> : <RefreshCcw />}
-                  <span>Recargar periodos</span>
-                </button>
-              </div>
-            </div>
-
-            {payrollPeriodError ? <div className="panel-error">{payrollPeriodError}</div> : null}
-            {payrollPeriodFeedback ? <div className="panel-success">{payrollPeriodFeedback}</div> : null}
-
-            <PayrollPeriodForm
-              form={payrollPeriodForm}
-              setForm={setPayrollPeriodForm}
-              onSubmit={handlePayrollPeriodClose}
-              isSaving={isPayrollPeriodSaving}
+              {calculationError ? <div className="panel-error">{calculationError}</div> : null}
+              {calculationFeedback ? <div className="panel-success">{calculationFeedback}</div> : null}
+              <HoursTable rows={calculatedRows} emptyTitle="Consulta marcas para calcular horas" />
+            </section>
+          </>
+        ) : activeView === 'aprobacion' ? (
+          <>
+            <ConsultationFilters
+              employees={employees}
+              selectedEmployee={selectedEmployee}
+              setSelectedEmployee={setSelectedEmployee}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              onSearch={refreshReport}
+              isRefreshing={isRefreshing}
             />
 
-            <PayrollPeriodsTable
-              periods={payrollPeriods}
-              onReopen={handlePayrollPeriodReopen}
-              isSaving={isPayrollPeriodSaving}
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Horas extra pendientes</h2>
+                  <p>Flujo inicial de revision. La aprobacion persistente queda preparada para la tabla de aprobaciones.</p>
+                </div>
+              </div>
+              {approvalError ? <div className="panel-error">{approvalError}</div> : null}
+              {approvalFeedback ? <div className="panel-success">{approvalFeedback}</div> : null}
+              <ApprovalTable
+                rows={calculatedRows.filter((row) => row.overtimeHours > 0 || row.doubleHours > 0)}
+                onStatusChange={handleApprovalStatusChange}
+                onOpenDetail={openApprovalDetail}
+                isSaving={isApprovalSaving}
+              />
+            </section>
+          </>
+        ) : activeView === 'reportes' ? (
+          <>
+            <section className="stats-grid">
+              <StatCard label="Horas trabajadas" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.workedHours, 0))} icon={<Clock />} />
+              <StatCard label="Horas ordinarias" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.regularHours, 0))} icon={<CalendarDays />} />
+              <StatCard label="Horas extra" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.overtimeHours, 0))} icon={<BarChart3 />} />
+              <StatCard label="Horas dobles" value={formatHours(calculatedRows.reduce((sum, row) => sum + row.doubleHours, 0))} icon={<ShieldAlert />} />
+            </section>
+
+            <ConsultationFilters
+              employees={employees}
+              selectedEmployee={selectedEmployee}
+              setSelectedEmployee={setSelectedEmployee}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              onSearch={refreshHoursSummaryReport}
+              isRefreshing={isSummaryLoading}
             />
-          </section>
 
-          <section className="filter-panel">
-            <div className="filter-panel-header">
-              <div>
-                <h2>Lugares de marca</h2>
-                <p>Administra los lugares disponibles para registrar asistencia.</p>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Resumen persistido de horas</h2>
+                  <p>Consulta totales por colaborador, incluyendo aprobaciones e inconsistencias.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={handleExportExcel} disabled={!filteredRecords.length}>
+                    <FileSpreadsheet />
+                    <span>Marcas Excel</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportPdf} disabled={!filteredRecords.length}>
+                    <Download />
+                    <span>Marcas PDF</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportHoursSummary} disabled={!hoursSummaryRows.length}>
+                    <FileSpreadsheet />
+                    <span>Horas Excel</span>
+                  </button>
+                </div>
               </div>
-              <div className="toolbar">
-                <button className="secondary-button" onClick={refreshLocations}>
-                  <RefreshCcw />
-                  <span>Recargar lista</span>
-                </button>
-                <button className="primary-button" onClick={openCreateLocationModal}>
-                  <MapPinned />
-                  <span>Nuevo lugar</span>
-                </button>
+              {summaryError ? <div className="panel-error">{summaryError}</div> : null}
+              <HoursSummaryTable rows={hoursSummaryRows} isLoading={isSummaryLoading} />
+            </section>
+
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Reporte para planilla</h2>
+                  <p>Ordinarias guardadas y extras/dobles aprobadas para pago, con pendientes separadas.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={refreshPayrollExportReport} disabled={isPayrollExportLoading}>
+                    {isPayrollExportLoading ? <Loader2 className="spin" /> : <Search />}
+                    <span>Cargar planilla</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportPayrollReport} disabled={!payrollExportRows.length}>
+                    <FileSpreadsheet />
+                    <span>Planilla Excel</span>
+                  </button>
+                </div>
               </div>
-            </div>
+              {payrollExportError ? <div className="panel-error">{payrollExportError}</div> : null}
+              <PayrollExportTable rows={payrollExportRows} isLoading={isPayrollExportLoading} />
+            </section>
 
-            {locationError ? <div className="panel-error">{locationError}</div> : null}
-            {locationFeedback ? <div className="panel-success">{locationFeedback}</div> : null}
-          </section>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Bitacora de aprobaciones</h2>
+                  <p>Historial de cambios aplicados a horas extra y dobles para auditoria administrativa.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={() => refreshApprovalAudit()} disabled={isApprovalAuditLoading}>
+                    {isApprovalAuditLoading ? <Loader2 className="spin" /> : <Search />}
+                    <span>Cargar bitacora</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportApprovalAudit} disabled={!approvalAuditRows.length}>
+                    <FileSpreadsheet />
+                    <span>Auditoria Excel</span>
+                  </button>
+                </div>
+              </div>
+              {approvalAuditError ? <div className="panel-error">{approvalAuditError}</div> : null}
+              <ApprovalAuditTable rows={approvalAuditRows} isLoading={isApprovalAuditLoading} />
+            </section>
 
-          <section className="employee-admin-list">
-            {locations.length ? (
-              locations.map((location) => (
-                <article key={location.id} className="employee-admin-card">
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Bitacora de correcciones de marcas</h2>
+                  <p>Historial de ajustes administrativos sobre marcas originales, con motivo y responsable.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={() => refreshMarkAudit()} disabled={isMarkAuditLoading}>
+                    {isMarkAuditLoading ? <Loader2 className="spin" /> : <Search />}
+                    <span>Cargar correcciones</span>
+                  </button>
+                  <button className="primary-button" onClick={handleExportMarkAudit} disabled={!markAuditRows.length}>
+                    <FileSpreadsheet />
+                    <span>Correcciones Excel</span>
+                  </button>
+                </div>
+              </div>
+              {markAuditError ? <div className="panel-error">{markAuditError}</div> : null}
+              <MarkAuditTable rows={markAuditRows} isLoading={isMarkAuditLoading} />
+            </section>
+          </>
+        ) : activeView === 'empleados' ? (
+          <>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Administracion de empleados</h2>
+                  <p>Crea, edita o elimina cuentas y define quienes son administradores de RRHH.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={refreshDirectory}>
+                    <RefreshCcw />
+                    <span>Recargar lista</span>
+                  </button>
+                  <button className="primary-button" onClick={openCreateEmployeeModal}>
+                    <UserPlus />
+                    <span>Nuevo empleado</span>
+                  </button>
+                </div>
+              </div>
+
+              {employeeError ? <div className="panel-error">{employeeError}</div> : null}
+              {employeeFeedback ? <div className="panel-success">{employeeFeedback}</div> : null}
+            </section>
+
+            <section className="employee-admin-list">
+              {employees.map((employee) => (
+                <article key={employee.user_id} className="employee-admin-card">
                   <div className="employee-admin-main">
                     <div>
-                      <h3>{location.name}</h3>
-                      <p>
-                        {location.requires_description
-                          ? 'Solicita descripcion adicional'
-                          : 'No requiere descripcion extra'}
-                      </p>
+                      <h3>{employee.display_name}</h3>
+                      <p>{employee.email}</p>
                     </div>
                     <div className="employee-admin-badges">
-                      <span className={location.is_active ? 'status-pill status-active' : 'status-pill status-inactive'}>
-                        {location.is_active ? 'Activo' : 'Inactivo'}
+                      <span className={employee.is_admin ? 'status-pill status-admin' : 'status-pill'}>
+                        {employee.is_admin ? 'Admin RRHH' : 'Empleado'}
                       </span>
-                      {location.is_system ? <span className="status-pill">Sistema</span> : null}
-                      <span className="status-pill">Orden {location.sort_order}</span>
+                      <span className={employee.is_active ? 'status-pill status-active' : 'status-pill status-inactive'}>
+                        {employee.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
                     </div>
                   </div>
                   <div className="employee-admin-meta">
-                    <span>
-                      Actualizado: {location.updated_at ? DATE_TIME_FORMATTER.format(new Date(location.updated_at)) : 'Sin fecha'}
-                    </span>
+                    <span>Creado: {employee.created_at ? DATE_TIME_FORMATTER.format(new Date(employee.created_at)) : 'Sin fecha'}</span>
+                    <span>Cedula: {employee.identification || 'Sin registrar'}</span>
+                    <span>Puesto: {employee.position || employee.job_position || 'Sin registrar'}</span>
+                    <span>Ingreso: {employee.hire_date || 'Sin fecha'}</span>
                   </div>
                   <div className="employee-admin-actions">
-                    <button className="secondary-button" onClick={() => openEditLocationModal(location)} disabled={location.is_system}>
+                    <button className="secondary-button" onClick={() => openEditEmployeeModal(employee)}>
                       <PencilLine />
                       <span>Editar</span>
                     </button>
-                    <button className="danger-button" onClick={() => handleLocationDelete(location)} disabled={isLocationSaving || location.is_system}>
+                    <button
+                      className="danger-button"
+                      onClick={() => handleEmployeeDelete(employee)}
+                      disabled={isEmployeeSaving || employee.user_id === session.user.id}
+                    >
                       <Trash2 />
                       <span>Eliminar</span>
                     </button>
                   </div>
                 </article>
-              ))
-            ) : (
-              <div className="empty-state">
-                <h3>No hay lugares configurados todavia</h3>
-                <p>Puedes crear el primer lugar con el boton "Nuevo lugar" o recargar despues de ejecutar el SQL en Supabase.</p>
+              ))}
+            </section>
+          </>
+        ) : activeView === 'configuracion' ? (
+          <>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Reglas de asistencia y horas</h2>
+                  <p>Parametros configurables por empresa para ordinarias, extras, dobles, almuerzo y aprobaciones.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={() => refreshAttendanceSettings({ silentFallback: false })}>
+                    <RefreshCcw />
+                    <span>Recargar reglas</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </section>
-        </>
-      ) : null}
 
-      {isEmployeeModalOpen ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeEmployeeModal}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{employeeForm.userId ? 'Editar empleado' : 'Crear empleado'}</h3>
-                <p>
-                  {employeeForm.userId
-                    ? 'Actualiza datos, permisos o contrasena.'
-                    : 'Crea la cuenta inicial del empleado con acceso al sistema.'}
-                </p>
-              </div>
-              <button className="icon-button" type="button" onClick={closeEmployeeModal}>
-                <X />
-              </button>
-            </div>
+              {settingsError ? <div className="panel-error">{settingsError}</div> : null}
+              {settingsFeedback ? <div className="panel-success">{settingsFeedback}</div> : null}
 
-            <form className="employee-form-grid" onSubmit={handleEmployeeSave}>
-              <label>
-                Correo
-                <input
-                  type="email"
-                  value={employeeForm.email}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, email: e.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Nombre
-                <input
-                  type="text"
-                  value={employeeForm.nombre}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, nombre: e.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Apellidos
-                <input
-                  type="text"
-                  value={employeeForm.apellidos}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, apellidos: e.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Identificacion / cedula
-                <input
-                  type="text"
-                  value={employeeForm.identification}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, identification: e.target.value }))}
-                  placeholder="Ej. 1-1111-1111"
-                />
-              </label>
-
-              <label>
-                Telefono
-                <input
-                  type="tel"
-                  value={employeeForm.phone}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, phone: e.target.value }))}
-                  placeholder="Ej. 8888-8888"
-                />
-              </label>
-
-              <label>
-                Puesto
-                <input
-                  type="text"
-                  value={employeeForm.position}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, position: e.target.value }))}
-                  placeholder="Ej. Operario"
-                />
-              </label>
-
-              <label>
-                Fecha de ingreso
-                <input
-                  type="date"
-                  value={employeeForm.hireDate}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, hireDate: e.target.value }))}
-                />
-              </label>
-
-              <label>
-                {employeeForm.userId ? 'Nueva contrasena (opcional)' : 'Contrasena temporal'}
-                <input
-                  type="text"
-                  value={employeeForm.password}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, password: e.target.value }))}
-                  placeholder={employeeForm.userId ? 'Solo si deseas cambiarla' : 'Minimo 6 caracteres'}
-                  required={!employeeForm.userId}
-                />
-              </label>
-
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={employeeForm.isAdmin}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, isAdmin: e.target.checked }))}
-                />
-                <span>Permitir acceso a RRHH como administrador</span>
-              </label>
-
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={employeeForm.isActive}
-                  onChange={(e) => setEmployeeForm((current) => ({ ...current, isActive: e.target.checked }))}
-                />
-                <span>Cuenta activa</span>
-              </label>
-
-              <div className="modal-actions">
-                <button type="button" className="secondary-button" onClick={closeEmployeeModal}>
-                  <X />
-                  <span>Cancelar</span>
-                </button>
-                <button type="submit" className="primary-button" disabled={isEmployeeSaving}>
-                  {isEmployeeSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
-                  <span>{isEmployeeSaving ? 'Guardando...' : 'Guardar empleado'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {isLocationModalOpen ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeLocationModal}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{locationForm.id ? 'Editar lugar' : 'Crear lugar'}</h3>
-                <p>Configura los lugares disponibles para marcar asistencia.</p>
-              </div>
-              <button className="icon-button" type="button" onClick={closeLocationModal}>
-                <X />
-              </button>
-            </div>
-
-            <form className="employee-form-grid" onSubmit={handleLocationSave}>
-              {locationError ? <div className="panel-error modal-message">{locationError}</div> : null}
-
-              <label>
-                Nombre del lugar
-                <input
-                  type="text"
-                  value={locationForm.name}
-                  onChange={(e) => setLocationForm((current) => ({ ...current, name: e.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Orden
-                <input
-                  type="number"
-                  value={locationForm.sortOrder}
-                  onChange={(e) => setLocationForm((current) => ({ ...current, sortOrder: e.target.value }))}
-                />
-              </label>
-
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={locationForm.requiresDescription}
-                  onChange={(e) => setLocationForm((current) => ({ ...current, requiresDescription: e.target.checked }))}
-                />
-                <span>Solicitar descripcion adicional cuando el usuario marque este lugar</span>
-              </label>
-
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={locationForm.isActive}
-                  onChange={(e) => setLocationForm((current) => ({ ...current, isActive: e.target.checked }))}
-                />
-                <span>Lugar activo</span>
-              </label>
-
-              <div className="modal-actions">
-                <button type="button" className="secondary-button" onClick={closeLocationModal}>
-                  <X />
-                  <span>Cancelar</span>
-                </button>
-                <button type="submit" className="primary-button" disabled={isLocationSaving}>
-                  {isLocationSaving ? <Loader2 className="spin" /> : <SlidersHorizontal />}
-                  <span>{isLocationSaving ? 'Guardando...' : 'Guardar lugar'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {isMarkCorrectionModalOpen ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeMarkCorrectionModal}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>Corregir marca</h3>
-                <p>{markCorrectionForm.employeeName}</p>
-              </div>
-              <button className="icon-button" type="button" onClick={closeMarkCorrectionModal}>
-                <X />
-              </button>
-            </div>
-
-            <form className="employee-form-grid" onSubmit={handleMarkCorrectionSave}>
-              {markCorrectionError ? <div className="panel-error modal-message">{markCorrectionError}</div> : null}
-
-              <label>
-                Tipo
-                <select
-                  value={markCorrectionForm.tipo}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, tipo: event.target.value }))}
-                  required
-                >
-                  {MARK_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Fecha
-                <input
-                  type="date"
-                  value={markCorrectionForm.date}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, date: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Hora
-                <input
-                  type="time"
-                  value={markCorrectionForm.time}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, time: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label>
-                Ubicacion
-                <input
-                  type="text"
-                  value={markCorrectionForm.ubicacion}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, ubicacion: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="full-span">
-                Descripcion
-                <textarea
-                  value={markCorrectionForm.descripcion}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, descripcion: event.target.value }))}
-                  rows="3"
-                  placeholder="Detalle visible en la marca corregida"
-                />
-              </label>
-
-              <label className="full-span">
-                Motivo de correccion
-                <textarea
-                  value={markCorrectionForm.reason}
-                  onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, reason: event.target.value }))}
-                  rows="3"
-                  placeholder="Ej. El colaborador marco salida en vez de salida a almuerzo."
-                  required
-                />
-              </label>
-
-              <div className="modal-actions">
-                <button type="button" className="secondary-button" onClick={closeMarkCorrectionModal}>
-                  <X />
-                  <span>Cancelar</span>
-                </button>
-                <button type="submit" className="primary-button" disabled={isMarkCorrectionSaving}>
-                  {isMarkCorrectionSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
-                  <span>{isMarkCorrectionSaving ? 'Guardando...' : 'Guardar correccion'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {approvalDetailRow ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeApprovalDetail}>
-          <div className="modal-card approval-detail-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>Detalle de horas extra</h3>
-                <p>{approvalDetailRow.employeeName} - {approvalDetailRow.dateLabel}</p>
-              </div>
-              <button className="icon-button" type="button" onClick={closeApprovalDetail}>
-                <X />
-              </button>
-            </div>
-
-            <div className="approval-detail-grid">
-              <DetailItem label="Entrada" value={approvalDetailRow.entry || 'Sin marca'} />
-              <DetailItem label="Salida almuerzo" value={approvalDetailRow.lunchOut || 'No aplica'} />
-              <DetailItem label="Entrada almuerzo" value={approvalDetailRow.lunchIn || 'No aplica'} />
-              <DetailItem label="Salida final" value={approvalDetailRow.exit || 'Sin marca'} />
-              <DetailItem label="Trabajadas" value={formatHours(approvalDetailRow.workedHours)} />
-              <DetailItem label="Ordinarias" value={formatHours(approvalDetailRow.regularHours)} />
-              <DetailItem label="Extra sugerida" value={formatHours(approvalDetailRow.overtimeHours)} />
-              <DetailItem label="Doble sugerida" value={formatHours(approvalDetailRow.doubleHours)} />
-              <DetailItem label="Estado calculo" value={approvalDetailRow.status} />
-              <DetailItem label="Estado aprobacion" value={getApprovalStatusLabel(approvalDetailRow.approvalStatus)} />
-            </div>
-
-            <div className="approval-notes-box">
-              <h4>Observaciones</h4>
-              <p>{approvalDetailRow.notes.join(', ')}</p>
-            </div>
-
-            <label className="approval-comment-field">
-              Comentario de revision
-              <textarea
-                rows="4"
-                value={approvalComment}
-                onChange={(event) => setApprovalComment(event.target.value)}
-                placeholder="Agrega el motivo de aprobacion, rechazo o correccion..."
+              <SettingsForm
+                settings={attendanceSettings}
+                setSettings={setAttendanceSettings}
+                onSubmit={handleAttendanceSettingsSave}
+                isSaving={isSettingsSaving}
               />
-            </label>
+            </section>
 
-            <div className="modal-actions">
-              <button type="button" className="secondary-button" onClick={closeApprovalDetail} disabled={isApprovalSaving}>
-                <X />
-                <span>Cerrar</span>
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => handleApprovalStatusChange(approvalDetailRow, 'requires_correction', approvalComment)}
-                disabled={isApprovalSaving}
-              >
-                <PencilLine />
-                <span>Solicitar correccion</span>
-              </button>
-              <button
-                type="button"
-                className="danger-button"
-                onClick={() => handleApprovalStatusChange(approvalDetailRow, 'rejected', approvalComment)}
-                disabled={isApprovalSaving}
-              >
-                <X />
-                <span>Rechazar</span>
-              </button>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => handleApprovalStatusChange(approvalDetailRow, 'approved', approvalComment)}
-                disabled={isApprovalSaving}
-              >
-                {isApprovalSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
-                <span>{isApprovalSaving ? 'Guardando...' : 'Aprobar'}</span>
-              </button>
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Cierre de planilla</h2>
+                  <p>Bloquea rangos ya revisados para evitar correcciones, aprobaciones o recalculos accidentales.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={() => refreshPayrollPeriods()} disabled={isPayrollPeriodSaving}>
+                    {isPayrollPeriodSaving ? <Loader2 className="spin" /> : <RefreshCcw />}
+                    <span>Recargar periodos</span>
+                  </button>
+                </div>
+              </div>
+
+              {payrollPeriodError ? <div className="panel-error">{payrollPeriodError}</div> : null}
+              {payrollPeriodFeedback ? <div className="panel-success">{payrollPeriodFeedback}</div> : null}
+
+              <PayrollPeriodForm
+                form={payrollPeriodForm}
+                setForm={setPayrollPeriodForm}
+                onSubmit={handlePayrollPeriodClose}
+                isSaving={isPayrollPeriodSaving}
+              />
+
+              <PayrollPeriodsTable
+                periods={payrollPeriods}
+                onReopen={handlePayrollPeriodReopen}
+                isSaving={isPayrollPeriodSaving}
+              />
+            </section>
+
+            <section className="filter-panel">
+              <div className="filter-panel-header">
+                <div>
+                  <h2>Lugares de marca</h2>
+                  <p>Administra los lugares disponibles para registrar asistencia.</p>
+                </div>
+                <div className="toolbar">
+                  <button className="secondary-button" onClick={refreshLocations}>
+                    <RefreshCcw />
+                    <span>Recargar lista</span>
+                  </button>
+                  <button className="primary-button" onClick={openCreateLocationModal}>
+                    <MapPinned />
+                    <span>Nuevo lugar</span>
+                  </button>
+                </div>
+              </div>
+
+              {locationError ? <div className="panel-error">{locationError}</div> : null}
+              {locationFeedback ? <div className="panel-success">{locationFeedback}</div> : null}
+            </section>
+
+            <section className="employee-admin-list">
+              {locations.length ? (
+                locations.map((location) => (
+                  <article key={location.id} className="employee-admin-card">
+                    <div className="employee-admin-main">
+                      <div>
+                        <h3>{location.name}</h3>
+                        <p>
+                          {location.requires_description
+                            ? 'Solicita descripcion adicional'
+                            : 'No requiere descripcion extra'}
+                        </p>
+                      </div>
+                      <div className="employee-admin-badges">
+                        <span className={location.is_active ? 'status-pill status-active' : 'status-pill status-inactive'}>
+                          {location.is_active ? 'Activo' : 'Inactivo'}
+                        </span>
+                        {location.is_system ? <span className="status-pill">Sistema</span> : null}
+                        <span className="status-pill">Orden {location.sort_order}</span>
+                      </div>
+                    </div>
+                    <div className="employee-admin-meta">
+                      <span>
+                        Actualizado: {location.updated_at ? DATE_TIME_FORMATTER.format(new Date(location.updated_at)) : 'Sin fecha'}
+                      </span>
+                    </div>
+                    <div className="employee-admin-actions">
+                      <button className="secondary-button" onClick={() => openEditLocationModal(location)} disabled={location.is_system}>
+                        <PencilLine />
+                        <span>Editar</span>
+                      </button>
+                      <button className="danger-button" onClick={() => handleLocationDelete(location)} disabled={isLocationSaving || location.is_system}>
+                        <Trash2 />
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <h3>No hay lugares configurados todavia</h3>
+                  <p>Puedes crear el primer lugar con el boton "Nuevo lugar" o recargar despues de ejecutar el SQL en Supabase.</p>
+                </div>
+              )}
+            </section>
+          </>
+        ) : null}
+
+        {isEmployeeModalOpen ? (
+          <div className="modal-backdrop" role="presentation" onClick={closeEmployeeModal}>
+            <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{employeeForm.userId ? 'Editar empleado' : 'Crear empleado'}</h3>
+                  <p>
+                    {employeeForm.userId
+                      ? 'Actualiza datos, permisos o contrasena.'
+                      : 'Crea la cuenta inicial del empleado con acceso al sistema.'}
+                  </p>
+                </div>
+                <button className="icon-button" type="button" onClick={closeEmployeeModal}>
+                  <X />
+                </button>
+              </div>
+
+              <form className="employee-form-grid" onSubmit={handleEmployeeSave}>
+                <label>
+                  Correo
+                  <input
+                    type="email"
+                    value={employeeForm.email}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, email: e.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Nombre
+                  <input
+                    type="text"
+                    value={employeeForm.nombre}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, nombre: e.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Apellidos
+                  <input
+                    type="text"
+                    value={employeeForm.apellidos}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, apellidos: e.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Identificacion / cedula
+                  <input
+                    type="text"
+                    value={employeeForm.identification}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, identification: e.target.value }))}
+                    placeholder="Ej. 1-1111-1111"
+                  />
+                </label>
+
+                <label>
+                  Telefono
+                  <input
+                    type="tel"
+                    value={employeeForm.phone}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, phone: e.target.value }))}
+                    placeholder="Ej. 8888-8888"
+                  />
+                </label>
+
+                <label>
+                  Puesto
+                  <input
+                    type="text"
+                    value={employeeForm.position}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, position: e.target.value }))}
+                    placeholder="Ej. Operario"
+                  />
+                </label>
+
+                <label>
+                  Fecha de ingreso
+                  <input
+                    type="date"
+                    value={employeeForm.hireDate}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, hireDate: e.target.value }))}
+                  />
+                </label>
+
+                <label>
+                  {employeeForm.userId ? 'Nueva contrasena (opcional)' : 'Contrasena temporal'}
+                  <input
+                    type="text"
+                    value={employeeForm.password}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, password: e.target.value }))}
+                    placeholder={employeeForm.userId ? 'Solo si deseas cambiarla' : 'Minimo 6 caracteres'}
+                    required={!employeeForm.userId}
+                  />
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={employeeForm.isAdmin}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, isAdmin: e.target.checked }))}
+                  />
+                  <span>Permitir acceso a RRHH como administrador</span>
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={employeeForm.isActive}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, isActive: e.target.checked }))}
+                  />
+                  <span>Cuenta activa</span>
+                </label>
+
+                <div className="modal-actions">
+                  <button type="button" className="secondary-button" onClick={closeEmployeeModal}>
+                    <X />
+                    <span>Cancelar</span>
+                  </button>
+                  <button type="submit" className="primary-button" disabled={isEmployeeSaving}>
+                    {isEmployeeSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
+                    <span>{isEmployeeSaving ? 'Guardando...' : 'Guardar empleado'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {isLocationModalOpen ? (
+          <div className="modal-backdrop" role="presentation" onClick={closeLocationModal}>
+            <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{locationForm.id ? 'Editar lugar' : 'Crear lugar'}</h3>
+                  <p>Configura los lugares disponibles para marcar asistencia.</p>
+                </div>
+                <button className="icon-button" type="button" onClick={closeLocationModal}>
+                  <X />
+                </button>
+              </div>
+
+              <form className="employee-form-grid" onSubmit={handleLocationSave}>
+                {locationError ? <div className="panel-error modal-message">{locationError}</div> : null}
+
+                <label>
+                  Nombre del lugar
+                  <input
+                    type="text"
+                    value={locationForm.name}
+                    onChange={(e) => setLocationForm((current) => ({ ...current, name: e.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Orden
+                  <input
+                    type="number"
+                    value={locationForm.sortOrder}
+                    onChange={(e) => setLocationForm((current) => ({ ...current, sortOrder: e.target.value }))}
+                  />
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={locationForm.requiresDescription}
+                    onChange={(e) => setLocationForm((current) => ({ ...current, requiresDescription: e.target.checked }))}
+                  />
+                  <span>Solicitar descripcion adicional cuando el usuario marque este lugar</span>
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={locationForm.isActive}
+                    onChange={(e) => setLocationForm((current) => ({ ...current, isActive: e.target.checked }))}
+                  />
+                  <span>Lugar activo</span>
+                </label>
+
+                <div className="modal-actions">
+                  <button type="button" className="secondary-button" onClick={closeLocationModal}>
+                    <X />
+                    <span>Cancelar</span>
+                  </button>
+                  <button type="submit" className="primary-button" disabled={isLocationSaving}>
+                    {isLocationSaving ? <Loader2 className="spin" /> : <SlidersHorizontal />}
+                    <span>{isLocationSaving ? 'Guardando...' : 'Guardar lugar'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {isMarkCorrectionModalOpen ? (
+          <div className="modal-backdrop" role="presentation" onClick={closeMarkCorrectionModal}>
+            <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Corregir marca</h3>
+                  <p>{markCorrectionForm.employeeName}</p>
+                </div>
+                <button className="icon-button" type="button" onClick={closeMarkCorrectionModal}>
+                  <X />
+                </button>
+              </div>
+
+              <form className="employee-form-grid" onSubmit={handleMarkCorrectionSave}>
+                {markCorrectionError ? <div className="panel-error modal-message">{markCorrectionError}</div> : null}
+
+                <label>
+                  Tipo
+                  <select
+                    value={markCorrectionForm.tipo}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, tipo: event.target.value }))}
+                    required
+                  >
+                    {MARK_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Fecha
+                  <input
+                    type="date"
+                    value={markCorrectionForm.date}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, date: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Hora
+                  <input
+                    type="time"
+                    value={markCorrectionForm.time}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, time: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Ubicacion
+                  <input
+                    type="text"
+                    value={markCorrectionForm.ubicacion}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, ubicacion: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label className="full-span">
+                  Descripcion
+                  <textarea
+                    value={markCorrectionForm.descripcion}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, descripcion: event.target.value }))}
+                    rows="3"
+                    placeholder="Detalle visible en la marca corregida"
+                  />
+                </label>
+
+                <label className="full-span">
+                  Motivo de correccion
+                  <textarea
+                    value={markCorrectionForm.reason}
+                    onChange={(event) => setMarkCorrectionForm((current) => ({ ...current, reason: event.target.value }))}
+                    rows="3"
+                    placeholder="Ej. El colaborador marco salida en vez de salida a almuerzo."
+                    required
+                  />
+                </label>
+
+                <div className="modal-actions">
+                  <button type="button" className="secondary-button" onClick={closeMarkCorrectionModal}>
+                    <X />
+                    <span>Cancelar</span>
+                  </button>
+                  <button type="submit" className="primary-button" disabled={isMarkCorrectionSaving}>
+                    {isMarkCorrectionSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
+                    <span>{isMarkCorrectionSaving ? 'Guardando...' : 'Guardar correccion'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {approvalDetailRow ? (
+          <div className="modal-backdrop" role="presentation" onClick={closeApprovalDetail}>
+            <div className="modal-card approval-detail-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Detalle de horas extra</h3>
+                  <p>{approvalDetailRow.employeeName} - {approvalDetailRow.dateLabel}</p>
+                </div>
+                <button className="icon-button" type="button" onClick={closeApprovalDetail}>
+                  <X />
+                </button>
+              </div>
+
+              <div className="approval-detail-grid">
+                <DetailItem label="Entrada" value={approvalDetailRow.entry || 'Sin marca'} />
+                <DetailItem label="Salida almuerzo" value={approvalDetailRow.lunchOut || 'No aplica'} />
+                <DetailItem label="Entrada almuerzo" value={approvalDetailRow.lunchIn || 'No aplica'} />
+                <DetailItem label="Salida final" value={approvalDetailRow.exit || 'Sin marca'} />
+                <DetailItem label="Trabajadas" value={formatHours(approvalDetailRow.workedHours)} />
+                <DetailItem label="Ordinarias" value={formatHours(approvalDetailRow.regularHours)} />
+                <DetailItem label="Extra sugerida" value={formatHours(approvalDetailRow.overtimeHours)} />
+                <DetailItem label="Doble sugerida" value={formatHours(approvalDetailRow.doubleHours)} />
+                <DetailItem label="Estado calculo" value={approvalDetailRow.status} />
+                <DetailItem label="Estado aprobacion" value={getApprovalStatusLabel(approvalDetailRow.approvalStatus)} />
+              </div>
+
+              <div className="approval-notes-box">
+                <h4>Observaciones</h4>
+                <p>{approvalDetailRow.notes.join(', ')}</p>
+              </div>
+
+              <label className="approval-comment-field">
+                Comentario de revision
+                <textarea
+                  rows="4"
+                  value={approvalComment}
+                  onChange={(event) => setApprovalComment(event.target.value)}
+                  placeholder="Agrega el motivo de aprobacion, rechazo o correccion..."
+                />
+              </label>
+
+              <div className="modal-actions">
+                <button type="button" className="secondary-button" onClick={closeApprovalDetail} disabled={isApprovalSaving}>
+                  <X />
+                  <span>Cerrar</span>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => handleApprovalStatusChange(approvalDetailRow, 'requires_correction', approvalComment)}
+                  disabled={isApprovalSaving}
+                >
+                  <PencilLine />
+                  <span>Solicitar correccion</span>
+                </button>
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={() => handleApprovalStatusChange(approvalDetailRow, 'rejected', approvalComment)}
+                  disabled={isApprovalSaving}
+                >
+                  <X />
+                  <span>Rechazar</span>
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => handleApprovalStatusChange(approvalDetailRow, 'approved', approvalComment)}
+                  disabled={isApprovalSaving}
+                >
+                  {isApprovalSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
+                  <span>{isApprovalSaving ? 'Guardando...' : 'Aprobar'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );
