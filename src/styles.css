@@ -346,8 +346,86 @@ a {
   color: var(--muted);
 }
 
+.admin-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  padding: 22px;
+  border-right: 1px solid var(--line);
+  background: rgba(7, 17, 31, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-brand strong,
+.sidebar-brand span {
+  display: block;
+}
+
+.sidebar-brand span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.sidebar-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(64, 196, 170, 0.22), rgba(121, 208, 255, 0.24));
+  color: #bdf7ee;
+}
+
+.sidebar-nav {
+  margin-top: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar-link {
+  min-height: 48px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 14px;
+  text-align: left;
+  transition: 160ms ease;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  color: var(--text);
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-link.active {
+  background: linear-gradient(135deg, rgba(64, 196, 170, 0.14), rgba(121, 208, 255, 0.12));
+}
+
 .dashboard-shell {
   padding: 24px;
+  min-width: 0;
 }
 
 .topbar,
@@ -506,6 +584,55 @@ a {
   gap: 16px;
 }
 
+.settings-form {
+  margin-top: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.settings-section {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settings-section h3 {
+  margin: 0 0 14px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-grid label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.settings-grid input,
+.settings-grid select {
+  min-height: 50px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0 14px;
+  outline: none;
+}
+
+.compact-checkbox {
+  grid-column: span 2;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .filter-grid input,
 .filter-grid select {
   border-radius: 18px;
@@ -545,6 +672,11 @@ a {
   place-items: center;
   gap: 10px;
   text-align: center;
+}
+
+.panel-loading.compact {
+  box-shadow: none;
+  padding: 22px;
 }
 
 .groups-stack,
@@ -633,6 +765,11 @@ a {
   color: #ffd0cb;
 }
 
+.status-warning {
+  background: rgba(248, 201, 109, 0.13);
+  color: #ffe2a0;
+}
+
 .dates-stack {
   margin-top: 16px;
   display: grid;
@@ -676,6 +813,12 @@ td {
   color: var(--text);
 }
 
+.muted-cell {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .map-link {
   color: #9fe8db;
   text-decoration: underline;
@@ -714,6 +857,10 @@ td {
   padding: 24px;
 }
 
+.approval-detail-modal {
+  width: min(100%, 920px);
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -744,7 +891,9 @@ td {
   color: var(--muted);
 }
 
-.employee-form-grid input {
+.employee-form-grid input,
+.employee-form-grid select,
+.employee-form-grid textarea {
   min-height: 50px;
   border-radius: 18px;
   border: 1px solid var(--line);
@@ -752,6 +901,13 @@ td {
   color: var(--text);
   padding: 0 14px;
   outline: none;
+}
+
+.employee-form-grid textarea {
+  min-height: 96px;
+  resize: vertical;
+  padding: 14px;
+  font: inherit;
 }
 
 .checkbox-row {
@@ -780,6 +936,119 @@ td {
   margin: 0;
 }
 
+.full-span {
+  grid-column: span 2;
+}
+
+.approval-detail-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-item {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.detail-item span,
+.detail-item strong {
+  display: block;
+}
+
+.detail-item span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.detail-item strong {
+  margin-top: 6px;
+  font-size: 1rem;
+}
+
+.approval-notes-box {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(248, 201, 109, 0.06);
+}
+
+.approval-notes-box h4,
+.approval-notes-box p {
+  margin: 0;
+}
+
+.approval-notes-box p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.approval-comment-field {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.approval-comment-field textarea {
+  min-height: 110px;
+  resize: vertical;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 14px;
+  outline: none;
+  font: inherit;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-transition {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-transition > span[aria-hidden="true"] {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.inline-actions .primary-button,
+.inline-actions .secondary-button,
+.inline-actions .danger-button {
+  min-height: 38px;
+  border-radius: 14px;
+  padding: 0 12px;
+}
+
+.compact-action {
+  min-height: 38px;
+  border-radius: 14px;
+  padding: 0 12px;
+}
+
+.compact-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.empty-state.compact {
+  box-shadow: none;
+  margin-top: 14px;
+  padding: 22px;
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -790,10 +1059,31 @@ td {
 }
 
 @media (max-width: 1120px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .auth-shell,
   .stats-grid,
-  .filter-grid {
+  .filter-grid,
+  .settings-grid,
+  .approval-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .compact-checkbox {
+    grid-column: span 1;
   }
 
   .topbar,
@@ -819,8 +1109,13 @@ td {
 
 @media (max-width: 720px) {
   .dashboard-shell,
-  .auth-shell {
+  .auth-shell,
+  .sidebar {
     padding: 16px;
+  }
+
+  .sidebar-nav {
+    grid-template-columns: 1fr;
   }
 
   .auth-panel-brand,
