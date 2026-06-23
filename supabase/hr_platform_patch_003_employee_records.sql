@@ -152,7 +152,7 @@ begin
     ) as apellidos,
     coalesce(e.identification, '') as identification,
     coalesce(e.phone, p.phone, '') as phone,
-    coalesce(e.position, '') as job_position,
+    coalesce(nullif(e.position, ''), nullif(u.raw_user_meta_data ->> 'position', ''), '') as job_position,
     e.hire_date,
     coalesce(e.status, p.status, 'active') as employee_status,
     coalesce((u.raw_user_meta_data ->> 'is_admin')::boolean, false)
