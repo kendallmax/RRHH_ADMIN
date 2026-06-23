@@ -24,6 +24,7 @@ import {
   UserCog,
   UserPlus,
   Users,
+  UserCheck,
   X,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -54,6 +55,8 @@ const EMPTY_EMPLOYEE_FORM = {
   position: '',
   hireDate: '',
   isAdmin: false,
+  isSupervisor: false,
+  supervisorUserId: '',
   isActive: true,
 };
 
@@ -140,6 +143,10 @@ export default function HRDashboard({ session }) {
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [employeeFeedback, setEmployeeFeedback] = useState('');
   const [employeeError, setEmployeeError] = useState('');
+  const [teamSupervisor, setTeamSupervisor] = useState(null);
+  const [teamEmployeeIds, setTeamEmployeeIds] = useState([]);
+  const [isTeamSaving, setIsTeamSaving] = useState(false);
+  const [configSection, setConfigSection] = useState('jornada');
   const [locations, setLocations] = useState([]);
   const [isLocationSaving, setIsLocationSaving] = useState(false);
   const [locationForm, setLocationForm] = useState(EMPTY_LOCATION_FORM);
@@ -934,6 +941,8 @@ export default function HRDashboard({ session }) {
       position: employee.position || employee.job_position || '',
       hireDate: employee.hire_date || '',
       isAdmin: Boolean(employee.is_admin),
+      isSupervisor: Boolean(employee.is_supervisor),
+      supervisorUserId: employee.supervisor_user_id || '',
       isActive: employee.is_active !== false,
     });
     setEmployeeFeedback('');
@@ -969,10 +978,19 @@ export default function HRDashboard({ session }) {
         position: employeeForm.position.trim(),
         hireDate: employeeForm.hireDate || null,
         isAdmin: employeeForm.isAdmin,
+        isSupervisor: employeeForm.isSupervisor,
         isActive: employeeForm.isActive,
       };
 
-      await callManageEmployees(payload);
+      const manageResult = await callManageEmployees(payload);
+      const savedUserId = employeeForm.userId || manageResult?.user?.id;
+      if (savedUserId) {
+        const { error: supervisorError } = await supabase.rpc('admin_set_employee_supervisor', {
+          target_employee_user_id: savedUserId,
+          target_supervisor_user_id: employeeForm.supervisorUserId || null,
+        });
+        if (supervisorError) throw supervisorError;
+      }
       await refreshDirectory();
       setEmployeeFeedback(
         employeeForm.userId
@@ -1015,6 +1033,61 @@ export default function HRDashboard({ session }) {
       setEmployeeError(error.message || 'No fue posible eliminar el empleado.');
     } finally {
       setIsEmployeeSaving(false);
+    }
+  };
+
+  const openSupervisorTeamModal = (supervisor) => {
+    setTeamSupervisor(supervisor);
+    setTeamEmployeeIds(
+      employees
+        .filter((employee) => employee.supervisor_user_id === supervisor.user_id)
+        .map((employee) => employee.user_id)
+    );
+    setEmployeeError('');
+    setEmployeeFeedback('');
+  };
+
+  const closeSupervisorTeamModal = () => {
+    if (isTeamSaving) return;
+    setTeamSupervisor(null);
+    setTeamEmployeeIds([]);
+  };
+
+  const handleSupervisorTeamSave = async () => {
+    if (!teamSupervisor) return;
+    setIsTeamSaving(true);
+    setEmployeeError('');
+    setEmployeeFeedback('');
+
+    try {
+      const assignableEmployees = employees.filter(
+        (employee) => employee.user_id !== teamSupervisor.user_id
+      );
+
+      await Promise.all(
+        assignableEmployees.map((employee) => {
+          const shouldBeAssigned = teamEmployeeIds.includes(employee.user_id);
+          const isCurrentlyAssigned = employee.supervisor_user_id === teamSupervisor.user_id;
+
+          if (!shouldBeAssigned && !isCurrentlyAssigned) return Promise.resolve();
+
+          return supabase.rpc('admin_set_employee_supervisor', {
+            target_employee_user_id: employee.user_id,
+            target_supervisor_user_id: shouldBeAssigned ? teamSupervisor.user_id : null,
+          }).then(({ error }) => {
+            if (error) throw error;
+          });
+        })
+      );
+
+      await refreshDirectory();
+      setEmployeeFeedback(`Personal a cargo de ${teamSupervisor.display_name} actualizado.`);
+      setTeamSupervisor(null);
+      setTeamEmployeeIds([]);
+    } catch (error) {
+      setEmployeeError(error.message || 'No fue posible actualizar el personal a cargo.');
+    } finally {
+      setIsTeamSaving(false);
     }
   };
 
@@ -1391,6 +1464,7 @@ export default function HRDashboard({ session }) {
                                   <th>Descripcion</th>
                                   <th>Coordenadas</th>
                                   <th>IP</th>
+                                  <th>Validacion supervisor</th>
                                   <th>Acciones</th>
                                 </tr>
                               </thead>
@@ -1420,6 +1494,14 @@ export default function HRDashboard({ session }) {
                                       )}
                                     </td>
                                     <td>{record.ip || 'Sin IP'}</td>
+                                    <td>
+                                      <span className={`status-pill validation-${record.supervisor_validation_status}`}>
+                                        {formatSupervisorValidation(record.supervisor_validation_status)}
+                                      </span>
+                                      {record.supervisor_name ? (
+                                        <div className="muted-cell">{record.supervisor_name}</div>
+                                      ) : null}
+                                    </td>
                                     <td>
                                       <button
                                         className="secondary-button compact-action"
@@ -1679,8 +1761,8 @@ export default function HRDashboard({ session }) {
                       <p>{employee.email}</p>
                     </div>
                     <div className="employee-admin-badges">
-                      <span className={employee.is_admin ? 'status-pill status-admin' : 'status-pill'}>
-                        {employee.is_admin ? 'Admin RRHH' : 'Empleado'}
+                      <span className={employee.is_admin ? 'status-pill status-admin' : employee.is_supervisor ? 'status-pill status-supervisor' : 'status-pill'}>
+                        {employee.is_admin ? 'Admin RRHH' : employee.is_supervisor ? 'Supervisor' : 'Empleado'}
                       </span>
                       <span className={employee.is_active ? 'status-pill status-active' : 'status-pill status-inactive'}>
                         {employee.is_active ? 'Activo' : 'Inactivo'}
@@ -1692,12 +1774,19 @@ export default function HRDashboard({ session }) {
                     <span>Cedula: {employee.identification || 'Sin registrar'}</span>
                     <span>Puesto: {employee.position || employee.job_position || 'Sin registrar'}</span>
                     <span>Ingreso: {employee.hire_date || 'Sin fecha'}</span>
+                    <span>Supervisor: {employee.supervisor_name || 'Sin asignar'}</span>
                   </div>
                   <div className="employee-admin-actions">
                     <button className="secondary-button" onClick={() => openEditEmployeeModal(employee)}>
                       <PencilLine />
-                      <span>Editar</span>
+                      <span>Editar perfil</span>
                     </button>
+                    {employee.is_supervisor ? (
+                      <button className="secondary-button" onClick={() => openSupervisorTeamModal(employee)}>
+                        <UserCheck />
+                        <span>Personal a cargo</span>
+                      </button>
+                    ) : null}
                     <button
                       className="danger-button"
                       onClick={() => handleEmployeeDelete(employee)}
@@ -1713,6 +1802,43 @@ export default function HRDashboard({ session }) {
           </>
         ) : activeView === 'configuracion' ? (
           <>
+            <section className="configuration-menu" aria-label="Secciones de configuracion">
+              <button
+                type="button"
+                className={configSection === 'jornada' ? 'configuration-option active' : 'configuration-option'}
+                onClick={() => setConfigSection('jornada')}
+              >
+                <Clock />
+                <span>
+                  <strong>Reglas de jornada</strong>
+                  <small>Horario, almuerzo, tolerancias y horas extra</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={configSection === 'planilla' ? 'configuration-option active' : 'configuration-option'}
+                onClick={() => setConfigSection('planilla')}
+              >
+                <CalendarDays />
+                <span>
+                  <strong>Cierre de planilla</strong>
+                  <small>Periodos cerrados y reaperturas</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={configSection === 'lugares' ? 'configuration-option active' : 'configuration-option'}
+                onClick={() => setConfigSection('lugares')}
+              >
+                <MapPinned />
+                <span>
+                  <strong>Lugares de marca</strong>
+                  <small>Ubicaciones disponibles para asistencia</small>
+                </span>
+              </button>
+            </section>
+
+            {configSection === 'jornada' ? (
             <section className="filter-panel">
               <div className="filter-panel-header">
                 <div>
@@ -1737,7 +1863,9 @@ export default function HRDashboard({ session }) {
                 isSaving={isSettingsSaving}
               />
             </section>
+            ) : null}
 
+            {configSection === 'planilla' ? (
             <section className="filter-panel">
               <div className="filter-panel-header">
                 <div>
@@ -1768,7 +1896,10 @@ export default function HRDashboard({ session }) {
                 isSaving={isPayrollPeriodSaving}
               />
             </section>
+            ) : null}
 
+            {configSection === 'lugares' ? (
+            <>
             <section className="filter-panel">
               <div className="filter-panel-header">
                 <div>
@@ -1836,6 +1967,8 @@ export default function HRDashboard({ session }) {
                 </div>
               )}
             </section>
+            </>
+            ) : null}
           </>
         ) : null}
 
@@ -1949,6 +2082,33 @@ export default function HRDashboard({ session }) {
                 <label className="checkbox-row">
                   <input
                     type="checkbox"
+                    checked={employeeForm.isSupervisor}
+                    disabled={employeeForm.isAdmin}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, isSupervisor: e.target.checked }))}
+                  />
+                  <span>Asignar rol Supervisor</span>
+                </label>
+
+                <label>
+                  Supervisor a cargo
+                  <select
+                    value={employeeForm.supervisorUserId}
+                    onChange={(e) => setEmployeeForm((current) => ({ ...current, supervisorUserId: e.target.value }))}
+                  >
+                    <option value="">Sin supervisor</option>
+                    {employees
+                      .filter((employee) => employee.is_supervisor && employee.user_id !== employeeForm.userId)
+                      .map((employee) => (
+                        <option key={employee.user_id} value={employee.user_id}>
+                          {employee.display_name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
                     checked={employeeForm.isActive}
                     onChange={(e) => setEmployeeForm((current) => ({ ...current, isActive: e.target.checked }))}
                   />
@@ -1966,6 +2126,65 @@ export default function HRDashboard({ session }) {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        ) : null}
+
+        {teamSupervisor ? (
+          <div className="modal-backdrop" role="presentation" onClick={closeSupervisorTeamModal}>
+            <div className="modal-card" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Personal a cargo</h3>
+                  <p>Supervisor: {teamSupervisor.display_name}</p>
+                </div>
+                <button className="icon-button" type="button" onClick={closeSupervisorTeamModal}>
+                  <X />
+                </button>
+              </div>
+
+              <div className="team-assignment-list">
+                {employees
+                  .filter((employee) => employee.user_id !== teamSupervisor.user_id)
+                  .map((employee) => {
+                    const assignedToAnother =
+                      employee.supervisor_user_id &&
+                      employee.supervisor_user_id !== teamSupervisor.user_id;
+                    return (
+                      <label key={employee.user_id} className="team-assignment-row">
+                        <input
+                          type="checkbox"
+                          checked={teamEmployeeIds.includes(employee.user_id)}
+                          disabled={assignedToAnother || isTeamSaving}
+                          onChange={(event) => setTeamEmployeeIds((current) =>
+                            event.target.checked
+                              ? [...current, employee.user_id]
+                              : current.filter((id) => id !== employee.user_id)
+                          )}
+                        />
+                        <span>
+                          <strong>{employee.display_name}</strong>
+                          <small>
+                            {assignedToAnother
+                              ? `Asignado a ${employee.supervisor_name}`
+                              : employee.email}
+                          </small>
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="secondary-button" onClick={closeSupervisorTeamModal} disabled={isTeamSaving}>
+                  <X />
+                  <span>Cancelar</span>
+                </button>
+                <button type="button" className="primary-button" onClick={handleSupervisorTeamSave} disabled={isTeamSaving}>
+                  {isTeamSaving ? <Loader2 className="spin" /> : <ShieldCheck />}
+                  <span>{isTeamSaving ? 'Guardando...' : 'Guardar asignaciones'}</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -3104,6 +3323,18 @@ function normalizeRecords(rows) {
 
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
+}
+
+function formatSupervisorValidation(status) {
+  const labels = {
+    no_required: 'No requiere autorizacion',
+    pending: 'Pendiente',
+    confirmed: 'Confirmada',
+    rejected: 'Rechazada',
+    duplicated: 'Duplicada',
+  };
+
+  return labels[status] || 'No requiere autorizacion';
 }
 
 function normalizeBackendCalculationRows(rows) {

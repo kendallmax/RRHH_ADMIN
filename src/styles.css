@@ -590,6 +590,74 @@ a {
   gap: 18px;
 }
 
+.configuration-menu {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.configuration-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.configuration-option:hover,
+.configuration-option.active {
+  border-color: var(--brand);
+  background: rgba(64, 196, 170, 0.1);
+}
+
+.configuration-option svg {
+  width: 20px;
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.configuration-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.configuration-option small,
+.team-assignment-row small {
+  color: var(--muted);
+}
+
+.team-assignment-list {
+  display: grid;
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.team-assignment-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.team-assignment-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.team-assignment-row span {
+  display: grid;
+  gap: 3px;
+}
+
 .settings-section {
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -1078,6 +1146,7 @@ td {
   .stats-grid,
   .filter-grid,
   .settings-grid,
+  .configuration-menu,
   .approval-detail-grid {
     grid-template-columns: 1fr;
   }
