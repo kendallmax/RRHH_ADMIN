@@ -1168,28 +1168,21 @@ export default function HRDashboard({ session }) {
   };
 
   const callManageEmployees = async (payload) => {
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
 
-    if (!currentSession?.access_token) {
+    if (sessionError || !currentSession?.access_token) {
       throw new Error('La sesion no es valida. Inicia sesion nuevamente.');
     }
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-employees`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${currentSession.access_token}`,
-      },
-      body: JSON.stringify(payload),
+    const { data, error } = await supabase.functions.invoke('manage-employees', {
+      body: payload,
     });
 
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.error || 'No fue posible completar la accion.');
+    if (error) {
+      throw new Error(data?.error || error.message || 'No fue posible completar la accion.');
     }
 
-    return result;
+    return data;
   };
 
   const handleLogout = async () => {
