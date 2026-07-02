@@ -133,7 +133,7 @@ export default function HRDashboard({ session }) {
   const [employees, setEmployees] = useState([]);
   const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
   const [records, setRecords] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [startDate, setStartDate] = useState(getDefaultStartDate());
   const [endDate, setEndDate] = useState(getDefaultEndDate());
   const [searchText, setSearchText] = useState('');
@@ -205,6 +205,7 @@ export default function HRDashboard({ session }) {
     () => getVisibleEmployees(employees, showInactiveEmployees),
     [employees, showInactiveEmployees]
   );
+  const singleEmployeeFilter = getSingleSelectedEmployeeFilter(selectedEmployees);
 
   useEffect(() => {
     if (isAdmin) {
@@ -444,7 +445,7 @@ export default function HRDashboard({ session }) {
 
   const refreshOvertimeApprovals = async () => {
     const { data, error } = await supabase.rpc('admin_list_overtime_approvals', {
-      filter_user_id: selectedEmployee || null,
+      filter_user_id: singleEmployeeFilter,
       filter_start_date: startDate || null,
       filter_end_date: endDate || null,
     });
@@ -454,13 +455,14 @@ export default function HRDashboard({ session }) {
       return [];
     }
 
-    setApprovalRows(data || []);
-    return data || [];
+    const rows = filterRowsBySelectedEmployees(data || [], selectedEmployees);
+    setApprovalRows(rows);
+    return rows;
   };
 
   const refreshSavedCalculations = async () => {
     const { data, error } = await supabase.rpc('admin_list_hour_calculations', {
-      filter_user_id: selectedEmployee || null,
+      filter_user_id: singleEmployeeFilter,
       filter_start_date: startDate || null,
       filter_end_date: endDate || null,
     });
@@ -470,8 +472,9 @@ export default function HRDashboard({ session }) {
       return [];
     }
 
-    setSavedCalculationRows(data || []);
-    return data || [];
+    const rows = filterRowsBySelectedEmployees(data || [], selectedEmployees, 'employee_user_id');
+    setSavedCalculationRows(rows);
+    return rows;
   };
 
   const openApprovalDetail = (row) => {
@@ -579,7 +582,7 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('admin_calculate_hours_from_marks', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
         persist_results: persistResults,
@@ -587,7 +590,7 @@ export default function HRDashboard({ session }) {
 
       if (error) throw error;
 
-      setRecords(normalizeBackendCalculationRows(data || []));
+      setRecords(filterRowsBySelectedEmployees(normalizeBackendCalculationRows(data || []), selectedEmployees, 'user_id'));
       await Promise.all([
         refreshOvertimeApprovals(),
         refreshSavedCalculations(),
@@ -613,7 +616,7 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('get_attendance_report', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
       });
@@ -636,7 +639,7 @@ export default function HRDashboard({ session }) {
     const query = searchText.trim().toLowerCase();
 
     return records.filter((record) => {
-      const matchesEmployee = !selectedEmployee || record.user_id === selectedEmployee;
+      const matchesEmployee = matchesSelectedEmployee(record.user_id, selectedEmployees);
       const matchesSearch =
         !query ||
         record.employee_name.toLowerCase().includes(query) ||
@@ -646,7 +649,7 @@ export default function HRDashboard({ session }) {
 
       return matchesEmployee && matchesSearch;
     });
-  }, [records, searchText, selectedEmployee]);
+  }, [records, searchText, selectedEmployees]);
 
   const groupedRecords = useMemo(() => groupRecords(filteredRecords), [filteredRecords]);
   const approvalMap = useMemo(() => {
@@ -778,14 +781,14 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('admin_get_hours_summary_report', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
       });
 
       if (error) throw error;
 
-      setHoursSummaryRows(data || []);
+      setHoursSummaryRows(filterRowsBySelectedEmployees(data || [], selectedEmployees));
     } catch (error) {
       const message = error.message || 'No fue posible cargar el resumen persistido de horas.';
       setSummaryError(
@@ -806,15 +809,16 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('admin_list_overtime_approval_audit', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
       });
 
       if (error) throw error;
 
-      setApprovalAuditRows(data || []);
-      return data || [];
+      const rows = filterRowsBySelectedEmployees(data || [], selectedEmployees);
+      setApprovalAuditRows(rows);
+      return rows;
     } catch (error) {
       const message = error.message || 'No fue posible cargar la bitacora de aprobaciones.';
       if (!silent) {
@@ -838,14 +842,14 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('admin_get_payroll_export_report', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
       });
 
       if (error) throw error;
 
-      setPayrollExportRows(data || []);
+      setPayrollExportRows(filterRowsBySelectedEmployees(data || [], selectedEmployees));
     } catch (error) {
       const message = error.message || 'No fue posible cargar el reporte de planilla.';
       setPayrollExportError(
@@ -866,15 +870,16 @@ export default function HRDashboard({ session }) {
 
     try {
       const { data, error } = await supabase.rpc('admin_list_attendance_mark_audit', {
-        filter_user_id: selectedEmployee || null,
+        filter_user_id: singleEmployeeFilter,
         filter_start_date: startDate || null,
         filter_end_date: endDate || null,
       });
 
       if (error) throw error;
 
-      setMarkAuditRows(data || []);
-      return data || [];
+      const rows = filterRowsBySelectedEmployees(data || [], selectedEmployees);
+      setMarkAuditRows(rows);
+      return rows;
     } catch (error) {
       const message = error.message || 'No fue posible cargar la bitacora de correcciones.';
       if (!silent) {
@@ -1478,14 +1483,21 @@ export default function HRDashboard({ session }) {
               <div className="filter-grid">
                 <label>
                   Empleado
-                  <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)}>
-                    <option value="">Todos los empleados</option>
+                  <select
+                    multiple
+                    size={Math.min(Math.max(employees.length, 4), 8)}
+                    value={selectedEmployees}
+                    onChange={(e) => setSelectedEmployees(getSelectedValues(e.target))}
+                  >
                     {employees.map((employee) => (
                       <option key={employee.user_id} value={employee.user_id}>
                         {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
                       </option>
                     ))}
                   </select>
+                  <small className="field-hint">
+                    Sin seleccion muestra todos. Usa Cmd/Ctrl o Shift para seleccionar varios.
+                  </small>
                 </label>
 
                 <label>
@@ -1670,8 +1682,8 @@ export default function HRDashboard({ session }) {
           <>
             <ConsultationFilters
               employees={employees}
-              selectedEmployee={selectedEmployee}
-              setSelectedEmployee={setSelectedEmployee}
+              selectedEmployees={selectedEmployees}
+              setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
               setStartDate={setStartDate}
               endDate={endDate}
@@ -1724,8 +1736,8 @@ export default function HRDashboard({ session }) {
           <>
             <ConsultationFilters
               employees={employees}
-              selectedEmployee={selectedEmployee}
-              setSelectedEmployee={setSelectedEmployee}
+              selectedEmployees={selectedEmployees}
+              setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
               setStartDate={setStartDate}
               endDate={endDate}
@@ -1764,8 +1776,8 @@ export default function HRDashboard({ session }) {
 
             <ConsultationFilters
               employees={employees}
-              selectedEmployee={selectedEmployee}
-              setSelectedEmployee={setSelectedEmployee}
+              selectedEmployees={selectedEmployees}
+              setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
               setStartDate={setStartDate}
               endDate={endDate}
@@ -2628,8 +2640,8 @@ function ModuleButton({ active, icon, label, onClick }) {
 
 function ConsultationFilters({
   employees,
-  selectedEmployee,
-  setSelectedEmployee,
+  selectedEmployees,
+  setSelectedEmployees,
   startDate,
   setStartDate,
   endDate,
@@ -2657,14 +2669,21 @@ function ConsultationFilters({
       <div className="filter-grid">
         <label>
           Colaborador
-          <select value={selectedEmployee} onChange={(event) => setSelectedEmployee(event.target.value)}>
-            <option value="">Todos los colaboradores</option>
+          <select
+            multiple
+            size={Math.min(Math.max(employees.length, 4), 8)}
+            value={selectedEmployees}
+            onChange={(event) => setSelectedEmployees(getSelectedValues(event.target))}
+          >
             {employees.map((employee) => (
               <option key={employee.user_id} value={employee.user_id}>
                 {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
               </option>
             ))}
           </select>
+          <small className="field-hint">
+            Sin seleccion muestra todos. Usa Cmd/Ctrl o Shift para seleccionar varios.
+          </small>
         </label>
 
         <label>
@@ -3790,6 +3809,23 @@ function normalizeAttendanceLocations(locations) {
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'es'));
 
   return [...cleanedLocations, OTHER_LOCATION];
+}
+
+function getSelectedValues(selectElement) {
+  return Array.from(selectElement.selectedOptions).map((option) => option.value);
+}
+
+function getSingleSelectedEmployeeFilter(selectedEmployees) {
+  return selectedEmployees.length === 1 ? selectedEmployees[0] : null;
+}
+
+function matchesSelectedEmployee(userId, selectedEmployees) {
+  return !selectedEmployees.length || selectedEmployees.includes(userId);
+}
+
+function filterRowsBySelectedEmployees(rows, selectedEmployees, key = 'employee_user_id') {
+  if (!selectedEmployees.length) return rows;
+  return rows.filter((row) => selectedEmployees.includes(row[key] || row.user_id));
 }
 
 function getVisibleEmployees(rows, includeInactive = false) {

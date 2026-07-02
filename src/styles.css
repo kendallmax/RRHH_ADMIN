@@ -241,6 +241,16 @@ a {
   min-height: 52px;
 }
 
+.filter-grid select[multiple] {
+  padding: 10px 0;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .icon-button {
   background: transparent;
   border: 0;
