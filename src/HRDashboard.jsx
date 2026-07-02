@@ -131,6 +131,7 @@ const DEFAULT_ATTENDANCE_SETTINGS = {
 export default function HRDashboard({ session }) {
   const [activeView, setActiveView] = useState('dashboard');
   const [employees, setEmployees] = useState([]);
+  const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
   const [records, setRecords] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [startDate, setStartDate] = useState(getDefaultStartDate());
@@ -198,6 +199,10 @@ export default function HRDashboard({ session }) {
     session?.user?.email;
 
   const isAdmin = isAdminSession(session);
+  const visibleEmployees = useMemo(
+    () => getVisibleEmployees(employees, showInactiveEmployees),
+    [employees, showInactiveEmployees]
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -219,7 +224,7 @@ export default function HRDashboard({ session }) {
 
       if (employeesResult.error) throw employeesResult.error;
 
-      setEmployees(getVisibleEmployees(employeesResult.data || []));
+      setEmployees(employeesResult.data || []);
       setRecords([]);
       await Promise.all([
         refreshLocations({ silentFallback: false }),
@@ -236,7 +241,7 @@ export default function HRDashboard({ session }) {
   const refreshDirectory = async () => {
     const { data, error } = await supabase.rpc('get_employee_directory');
     if (error) throw error;
-    setEmployees(getVisibleEmployees(data || []));
+    setEmployees(data || []);
   };
 
   const refreshLocations = async ({ silentFallback = true } = {}) => {
@@ -1011,7 +1016,7 @@ export default function HRDashboard({ session }) {
 
   const handleEmployeeDelete = async (employee) => {
     const confirmed = window.confirm(
-      `Se eliminara la cuenta de ${employee.display_name}. Esta accion no se puede deshacer.`
+      `Se inactivara la cuenta de ${employee.display_name}. El historial se conserva y puedes reactivarla despues.`
     );
 
     if (!confirmed) {
@@ -1028,9 +1033,46 @@ export default function HRDashboard({ session }) {
         userId: employee.user_id,
       });
       await refreshDirectory();
-      setEmployeeFeedback('Empleado eliminado correctamente.');
+      setEmployeeFeedback('Empleado inactivado correctamente.');
     } catch (error) {
-      setEmployeeError(error.message || 'No fue posible eliminar el empleado.');
+      setEmployeeError(error.message || 'No fue posible inactivar el empleado.');
+    } finally {
+      setIsEmployeeSaving(false);
+    }
+  };
+
+  const handleEmployeeReactivate = async (employee) => {
+    const confirmed = window.confirm(
+      `Se reactivara la cuenta de ${employee.display_name} y podra volver a ingresar al sistema.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setEmployeeError('');
+    setEmployeeFeedback('');
+    setIsEmployeeSaving(true);
+
+    try {
+      await callManageEmployees({
+        action: 'update',
+        userId: employee.user_id,
+        email: employee.email || '',
+        nombre: employee.nombre || extractFirstName(employee.display_name),
+        apellidos: employee.apellidos || extractLastName(employee.display_name),
+        identification: employee.identification || '',
+        phone: employee.phone || '',
+        position: employee.position || employee.job_position || '',
+        hireDate: employee.hire_date || null,
+        isAdmin: Boolean(employee.is_admin),
+        isSupervisor: Boolean(employee.is_supervisor),
+        isActive: true,
+      });
+      await refreshDirectory();
+      setEmployeeFeedback('Empleado reactivado correctamente.');
+    } catch (error) {
+      setEmployeeError(error.message || 'No fue posible reactivar el empleado.');
     } finally {
       setIsEmployeeSaving(false);
     }
@@ -1040,7 +1082,7 @@ export default function HRDashboard({ session }) {
     setTeamSupervisor(supervisor);
     setTeamEmployeeIds(
       employees
-        .filter((employee) => employee.supervisor_user_id === supervisor.user_id)
+        .filter((employee) => employee.is_active !== false && employee.supervisor_user_id === supervisor.user_id)
         .map((employee) => employee.user_id)
     );
     setEmployeeError('');
@@ -1061,7 +1103,7 @@ export default function HRDashboard({ session }) {
 
     try {
       const assignableEmployees = employees.filter(
-        (employee) => employee.user_id !== teamSupervisor.user_id
+        (employee) => employee.is_active !== false && employee.user_id !== teamSupervisor.user_id
       );
 
       await Promise.all(
@@ -1737,6 +1779,14 @@ export default function HRDashboard({ session }) {
                   <p>Crea, edita o elimina cuentas y define quienes son administradores de RRHH.</p>
                 </div>
                 <div className="toolbar">
+                  <label className="checkbox-row toolbar-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={showInactiveEmployees}
+                      onChange={(e) => setShowInactiveEmployees(e.target.checked)}
+                    />
+                    <span>Mostrar inactivos</span>
+                  </label>
                   <button className="secondary-button" onClick={refreshDirectory}>
                     <RefreshCcw />
                     <span>Recargar lista</span>
@@ -1753,7 +1803,7 @@ export default function HRDashboard({ session }) {
             </section>
 
             <section className="employee-admin-list">
-              {employees.map((employee) => (
+              {visibleEmployees.map((employee) => (
                 <article key={employee.user_id} className="employee-admin-card">
                   <div className="employee-admin-main">
                     <div>
@@ -1787,17 +1837,31 @@ export default function HRDashboard({ session }) {
                         <span>Personal a cargo</span>
                       </button>
                     ) : null}
-                    <button
-                      className="danger-button"
-                      onClick={() => handleEmployeeDelete(employee)}
-                      disabled={isEmployeeSaving || employee.user_id === session.user.id}
-                    >
-                      <Trash2 />
-                      <span>Eliminar</span>
-                    </button>
+                    {employee.is_active === false ? (
+                      <button
+                        className="primary-button"
+                        onClick={() => handleEmployeeReactivate(employee)}
+                        disabled={isEmployeeSaving}
+                      >
+                        <ShieldCheck />
+                        <span>Reactivar</span>
+                      </button>
+                    ) : (
+                      <button
+                        className="danger-button"
+                        onClick={() => handleEmployeeDelete(employee)}
+                        disabled={isEmployeeSaving || employee.user_id === session.user.id}
+                      >
+                        <Trash2 />
+                        <span>Inactivar</span>
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
+              {!visibleEmployees.length ? (
+                <div className="empty-state">No hay empleados para mostrar con el filtro actual.</div>
+              ) : null}
             </section>
           </>
         ) : activeView === 'configuracion' ? (
@@ -2097,7 +2161,7 @@ export default function HRDashboard({ session }) {
                   >
                     <option value="">Sin supervisor</option>
                     {employees
-                      .filter((employee) => employee.is_supervisor && employee.user_id !== employeeForm.userId)
+                      .filter((employee) => employee.is_active !== false && employee.is_supervisor && employee.user_id !== employeeForm.userId)
                       .map((employee) => (
                         <option key={employee.user_id} value={employee.user_id}>
                           {employee.display_name}
@@ -2145,7 +2209,7 @@ export default function HRDashboard({ session }) {
 
               <div className="team-assignment-list">
                 {employees
-                  .filter((employee) => employee.user_id !== teamSupervisor.user_id)
+                  .filter((employee) => employee.is_active !== false && employee.user_id !== teamSupervisor.user_id)
                   .map((employee) => {
                     const assignedToAnother =
                       employee.supervisor_user_id &&
@@ -3619,8 +3683,8 @@ function normalizeAttendanceLocations(locations) {
   return [...cleanedLocations, OTHER_LOCATION];
 }
 
-function getVisibleEmployees(rows) {
-  return rows.filter((employee) => employee.is_active !== false);
+function getVisibleEmployees(rows, includeInactive = false) {
+  return includeInactive ? rows : rows.filter((employee) => employee.is_active !== false);
 }
 
 function groupRecords(rows) {
