@@ -914,18 +914,23 @@ td {
   inset: 0;
   background: rgba(3, 10, 18, 0.72);
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
   padding: 20px;
+  overflow-y: auto;
   z-index: 30;
 }
 
 .modal-card {
   width: min(100%, 760px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background: rgba(9, 18, 33, 0.96);
   border: 1px solid var(--line);
   border-radius: 28px;
   box-shadow: var(--shadow);
   padding: 24px;
+  margin: auto 0;
 }
 
 .approval-detail-modal {
@@ -1005,10 +1010,15 @@ td {
 
 .modal-actions {
   grid-column: span 2;
+  position: sticky;
+  bottom: -24px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 8px;
+  margin: 8px -24px -24px;
+  padding: 16px 24px 24px;
+  background: linear-gradient(180deg, rgba(9, 18, 33, 0.72), rgba(9, 18, 33, 0.98) 38%);
+  border-top: 1px solid var(--line);
 }
 
 .modal-message {
