@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   CalendarDays,
@@ -2636,10 +2636,25 @@ function ModuleButton({ active, icon, label, onClick }) {
 }
 
 function EmployeeMultiSelect({ label, employees, selectedEmployees, setSelectedEmployees }) {
+  const detailsRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
   const selectedCount = selectedEmployees.length;
   const summary = selectedCount
     ? `${selectedCount} seleccionado${selectedCount === 1 ? '' : 's'}`
     : 'Todos';
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (!detailsRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isOpen]);
 
   const toggleEmployee = (userId) => {
     setSelectedEmployees((current) =>
@@ -2649,19 +2664,39 @@ function EmployeeMultiSelect({ label, employees, selectedEmployees, setSelectedE
     );
   };
 
+  const clearSelection = () => {
+    setSelectedEmployees([]);
+    setIsOpen(false);
+  };
+
   return (
     <div className="employee-multi-field">
       <div className="employee-multi-label">
         <span>{label}</span>
       </div>
-      <details className="employee-multi-filter">
+      <details
+        ref={detailsRef}
+        className="employee-multi-filter"
+        open={isOpen}
+        onToggle={(event) => setIsOpen(event.currentTarget.open)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setIsOpen(false);
+          }
+        }}
+      >
         <summary>
           <span>{summary}</span>
         </summary>
         <div className="employee-multi-popover">
-          <button type="button" className="employee-multi-all" onClick={() => setSelectedEmployees([])}>
-            Todos
-          </button>
+          <div className="employee-multi-popover-actions">
+            <button type="button" className="employee-multi-all" onClick={clearSelection}>
+              Todos
+            </button>
+            <button type="button" className="employee-multi-close" onClick={() => setIsOpen(false)} aria-label="Cerrar filtro de empleados">
+              <X />
+            </button>
+          </div>
           <div className="employee-multi-list">
             {employees.map((employee) => (
               <label key={employee.user_id} className="employee-multi-option">
