@@ -219,7 +219,7 @@ export default function HRDashboard({ session }) {
 
       if (employeesResult.error) throw employeesResult.error;
 
-      setEmployees(employeesResult.data || []);
+      setEmployees(getVisibleEmployees(employeesResult.data || []));
       setRecords([]);
       await Promise.all([
         refreshLocations({ silentFallback: false }),
@@ -236,7 +236,7 @@ export default function HRDashboard({ session }) {
   const refreshDirectory = async () => {
     const { data, error } = await supabase.rpc('get_employee_directory');
     if (error) throw error;
-    setEmployees(data || []);
+    setEmployees(getVisibleEmployees(data || []));
   };
 
   const refreshLocations = async ({ silentFallback = true } = {}) => {
@@ -3617,6 +3617,10 @@ function normalizeAttendanceLocations(locations) {
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'es'));
 
   return [...cleanedLocations, OTHER_LOCATION];
+}
+
+function getVisibleEmployees(rows) {
+  return rows.filter((employee) => employee.is_active !== false);
 }
 
 function groupRecords(rows) {
