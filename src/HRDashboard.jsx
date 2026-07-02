@@ -1481,24 +1481,12 @@ export default function HRDashboard({ session }) {
               </div>
 
               <div className="filter-grid">
-                <label>
-                  Empleado
-                  <select
-                    multiple
-                    size={Math.min(Math.max(employees.length, 4), 8)}
-                    value={selectedEmployees}
-                    onChange={(e) => setSelectedEmployees(getSelectedValues(e.target))}
-                  >
-                    {employees.map((employee) => (
-                      <option key={employee.user_id} value={employee.user_id}>
-                        {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <small className="field-hint">
-                    Sin seleccion muestra todos. Usa Cmd/Ctrl o Shift para seleccionar varios.
-                  </small>
-                </label>
+                <EmployeeMultiSelect
+                  label="Empleado"
+                  employees={employees}
+                  selectedEmployees={selectedEmployees}
+                  setSelectedEmployees={setSelectedEmployees}
+                />
 
                 <label>
                   Fecha inicial
@@ -2638,6 +2626,53 @@ function ModuleButton({ active, icon, label, onClick }) {
   );
 }
 
+function EmployeeMultiSelect({ label, employees, selectedEmployees, setSelectedEmployees }) {
+  const selectedCount = selectedEmployees.length;
+  const summary = selectedCount
+    ? `${selectedCount} colaborador${selectedCount === 1 ? '' : 'es'} seleccionado${selectedCount === 1 ? '' : 's'}`
+    : 'Todos los colaboradores';
+
+  const toggleEmployee = (userId) => {
+    setSelectedEmployees((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId]
+    );
+  };
+
+  return (
+    <div className="employee-multi-filter">
+      <div className="employee-multi-header">
+        <span>{label}</span>
+        <strong>{summary}</strong>
+      </div>
+      <div className="employee-multi-actions">
+        <button type="button" className="text-button" onClick={() => setSelectedEmployees([])}>
+          Todos
+        </button>
+        <button type="button" className="text-button" onClick={() => setSelectedEmployees([])} disabled={!selectedCount}>
+          Limpiar
+        </button>
+      </div>
+      <div className="employee-multi-list">
+        {employees.map((employee) => (
+          <label key={employee.user_id} className="employee-multi-option">
+            <input
+              type="checkbox"
+              checked={selectedEmployees.includes(employee.user_id)}
+              onChange={() => toggleEmployee(employee.user_id)}
+            />
+            <span>
+              <strong>{employee.display_name}</strong>
+              {employee.email ? <small>{employee.email}</small> : null}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ConsultationFilters({
   employees,
   selectedEmployees,
@@ -2667,24 +2702,12 @@ function ConsultationFilters({
       </div>
 
       <div className="filter-grid">
-        <label>
-          Colaborador
-          <select
-            multiple
-            size={Math.min(Math.max(employees.length, 4), 8)}
-            value={selectedEmployees}
-            onChange={(event) => setSelectedEmployees(getSelectedValues(event.target))}
-          >
-            {employees.map((employee) => (
-              <option key={employee.user_id} value={employee.user_id}>
-                {employee.display_name} {employee.email ? `- ${employee.email}` : ''}
-              </option>
-            ))}
-          </select>
-          <small className="field-hint">
-            Sin seleccion muestra todos. Usa Cmd/Ctrl o Shift para seleccionar varios.
-          </small>
-        </label>
+        <EmployeeMultiSelect
+          label="Colaborador"
+          employees={employees}
+          selectedEmployees={selectedEmployees}
+          setSelectedEmployees={setSelectedEmployees}
+        />
 
         <label>
           Fecha inicial
@@ -3809,10 +3832,6 @@ function normalizeAttendanceLocations(locations) {
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'es'));
 
   return [...cleanedLocations, OTHER_LOCATION];
-}
-
-function getSelectedValues(selectElement) {
-  return Array.from(selectElement.selectedOptions).map((option) => option.value);
 }
 
 function getSingleSelectedEmployeeFilter(selectedEmployees) {

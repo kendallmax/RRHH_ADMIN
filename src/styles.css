@@ -241,16 +241,6 @@ a {
   min-height: 52px;
 }
 
-.filter-grid select[multiple] {
-  padding: 10px 0;
-}
-
-.field-hint {
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.35;
-}
-
 .icon-button {
   background: transparent;
   border: 0;
@@ -595,6 +585,91 @@ a {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.employee-multi-filter {
+  display: grid;
+  grid-column: span 2;
+  gap: 10px;
+  min-width: 0;
+}
+
+.employee-multi-header {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.employee-multi-header strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.employee-multi-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #a9dcff;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.text-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.employee-multi-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.employee-multi-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  color: var(--text) !important;
+}
+
+.employee-multi-option:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.employee-multi-option input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.employee-multi-option span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.employee-multi-option strong,
+.employee-multi-option small {
+  overflow-wrap: anywhere;
+}
+
+.employee-multi-option small {
+  color: var(--muted);
 }
 
 .settings-form {
@@ -1210,6 +1285,7 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .employee-multi-filter,
   .checkbox-row,
   .modal-actions {
     grid-column: span 1;
