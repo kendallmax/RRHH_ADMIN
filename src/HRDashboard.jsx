@@ -1319,9 +1319,9 @@ export default function HRDashboard({ session }) {
 
     try {
       const { error } = await supabase.rpc('admin_validate_attendance_mark', {
-        attendance_id: record.id,
-        validation_status: status,
-        validation_comment: comment.trim() || null,
+        p_attendance_id: record.id,
+        p_validation_status: status,
+        p_validation_comment: comment.trim() || null,
       });
 
       if (error) throw error;
