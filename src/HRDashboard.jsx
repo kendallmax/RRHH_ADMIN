@@ -2629,8 +2629,8 @@ function ModuleButton({ active, icon, label, onClick }) {
 function EmployeeMultiSelect({ label, employees, selectedEmployees, setSelectedEmployees }) {
   const selectedCount = selectedEmployees.length;
   const summary = selectedCount
-    ? `${selectedCount} colaborador${selectedCount === 1 ? '' : 'es'} seleccionado${selectedCount === 1 ? '' : 's'}`
-    : 'Todos los colaboradores';
+    ? `${selectedCount} seleccionado${selectedCount === 1 ? '' : 's'}`
+    : 'Todos';
 
   const toggleEmployee = (userId) => {
     setSelectedEmployees((current) =>
@@ -2641,34 +2641,32 @@ function EmployeeMultiSelect({ label, employees, selectedEmployees, setSelectedE
   };
 
   return (
-    <div className="employee-multi-filter">
-      <div className="employee-multi-header">
+    <div className="employee-multi-field">
+      <div className="employee-multi-label">
         <span>{label}</span>
-        <strong>{summary}</strong>
       </div>
-      <div className="employee-multi-actions">
-        <button type="button" className="text-button" onClick={() => setSelectedEmployees([])}>
-          Todos
-        </button>
-        <button type="button" className="text-button" onClick={() => setSelectedEmployees([])} disabled={!selectedCount}>
-          Limpiar
-        </button>
-      </div>
-      <div className="employee-multi-list">
-        {employees.map((employee) => (
-          <label key={employee.user_id} className="employee-multi-option">
-            <input
-              type="checkbox"
-              checked={selectedEmployees.includes(employee.user_id)}
-              onChange={() => toggleEmployee(employee.user_id)}
-            />
-            <span>
-              <strong>{employee.display_name}</strong>
-              {employee.email ? <small>{employee.email}</small> : null}
-            </span>
-          </label>
-        ))}
-      </div>
+      <details className="employee-multi-filter">
+        <summary>
+          <span>{summary}</span>
+        </summary>
+        <div className="employee-multi-popover">
+          <button type="button" className="employee-multi-all" onClick={() => setSelectedEmployees([])}>
+            Todos
+          </button>
+          <div className="employee-multi-list">
+            {employees.map((employee) => (
+              <label key={employee.user_id} className="employee-multi-option">
+                <input
+                  type="checkbox"
+                  checked={selectedEmployees.includes(employee.user_id)}
+                  onChange={() => toggleEmployee(employee.user_id)}
+                />
+                <span>{employee.display_name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

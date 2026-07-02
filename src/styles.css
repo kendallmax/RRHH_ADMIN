@@ -587,63 +587,94 @@ a {
   gap: 16px;
 }
 
-.employee-multi-filter {
+.employee-multi-field {
   display: grid;
-  grid-column: span 2;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
-.employee-multi-header {
-  display: grid;
-  gap: 4px;
+.employee-multi-label {
   color: var(--muted);
   font-size: 0.95rem;
 }
 
-.employee-multi-header strong {
+.employee-multi-filter {
+  position: relative;
+  min-width: 0;
+}
+
+.employee-multi-filter summary {
+  min-height: 52px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.employee-multi-actions {
+  cursor: pointer;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
+  padding: 0 14px;
+  list-style: none;
 }
 
-.text-button {
+.employee-multi-filter summary::-webkit-details-marker {
+  display: none;
+}
+
+.employee-multi-filter summary::after {
+  content: "▾";
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.employee-multi-filter[open] summary {
+  border-color: rgba(121, 208, 255, 0.42);
+}
+
+.employee-multi-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #0b1626;
+  box-shadow: var(--shadow);
+  padding: 8px;
+}
+
+.employee-multi-all {
+  width: 100%;
   border: 0;
-  background: transparent;
+  border-radius: 10px;
+  background: rgba(121, 208, 255, 0.1);
   color: #a9dcff;
   cursor: pointer;
   font: inherit;
-  padding: 0;
-}
-
-.text-button:disabled {
-  color: var(--muted);
-  cursor: not-allowed;
+  min-height: 32px;
+  margin-bottom: 6px;
+  text-align: left;
+  padding: 0 10px;
 }
 
 .employee-multi-list {
   display: grid;
-  gap: 8px;
-  max-height: 220px;
+  gap: 2px;
+  max-height: 210px;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .employee-multi-option {
   display: flex !important;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 12px;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 10px;
   color: var(--text) !important;
+  font-size: 0.9rem;
 }
 
 .employee-multi-option:hover {
@@ -653,23 +684,12 @@ a {
 .employee-multi-option input {
   width: 16px;
   height: 16px;
-  margin-top: 2px;
   flex: 0 0 auto;
 }
 
 .employee-multi-option span {
-  display: grid;
-  gap: 2px;
   min-width: 0;
-}
-
-.employee-multi-option strong,
-.employee-multi-option small {
   overflow-wrap: anywhere;
-}
-
-.employee-multi-option small {
-  color: var(--muted);
 }
 
 .settings-form {
@@ -1285,7 +1305,7 @@ td {
     grid-template-columns: 1fr;
   }
 
-  .employee-multi-filter,
+  .employee-multi-field,
   .checkbox-row,
   .modal-actions {
     grid-column: span 1;
