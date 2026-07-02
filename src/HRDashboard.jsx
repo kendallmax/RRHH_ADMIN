@@ -158,6 +158,7 @@ export default function HRDashboard({ session }) {
   const [markCorrectionForm, setMarkCorrectionForm] = useState(EMPTY_MARK_CORRECTION_FORM);
   const [isMarkCorrectionModalOpen, setIsMarkCorrectionModalOpen] = useState(false);
   const [isMarkCorrectionSaving, setIsMarkCorrectionSaving] = useState(false);
+  const [validatingMarkId, setValidatingMarkId] = useState('');
   const [markCorrectionFeedback, setMarkCorrectionFeedback] = useState('');
   const [markCorrectionError, setMarkCorrectionError] = useState('');
   const [attendanceSettings, setAttendanceSettings] = useState(DEFAULT_ATTENDANCE_SETTINGS);
@@ -1294,6 +1295,46 @@ export default function HRDashboard({ session }) {
     }
   };
 
+  const handleHrMarkValidation = async (record, status) => {
+    const labels = {
+      confirmed: 'confirmar',
+      rejected: 'rechazar',
+      duplicated: 'marcar como duplicada',
+    };
+    const actionLabel = labels[status] || 'validar';
+    const confirmed = window.confirm(`Se va a ${actionLabel} la marca de ${record.employee_name}.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    let comment = '';
+    if (status === 'rejected' || status === 'duplicated') {
+      comment = window.prompt('Observacion breve para la trazabilidad:', '') || '';
+    }
+
+    setValidatingMarkId(record.id);
+    setMarkCorrectionError('');
+    setMarkCorrectionFeedback('');
+
+    try {
+      const { error } = await supabase.rpc('admin_validate_attendance_mark', {
+        attendance_id: record.id,
+        validation_status: status,
+        validation_comment: comment.trim() || null,
+      });
+
+      if (error) throw error;
+
+      setMarkCorrectionFeedback('Validacion administrativa guardada correctamente.');
+      await refreshReport();
+    } catch (error) {
+      setMarkCorrectionError(error.message || 'No fue posible validar la marca desde RRHH.');
+    } finally {
+      setValidatingMarkId('');
+    }
+  };
+
   const callManageEmployees = async (payload) => {
     const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
 
@@ -1519,6 +1560,7 @@ export default function HRDashboard({ session }) {
                                   <th>Coordenadas</th>
                                   <th>IP</th>
                                   <th>Validacion supervisor</th>
+                                  <th>Validacion RRHH</th>
                                   <th>Acciones</th>
                                 </tr>
                               </thead>
@@ -1557,14 +1599,54 @@ export default function HRDashboard({ session }) {
                                       ) : null}
                                     </td>
                                     <td>
-                                      <button
-                                        className="secondary-button compact-action"
-                                        type="button"
-                                        onClick={() => openMarkCorrectionModal(record)}
-                                      >
-                                        <PencilLine />
-                                        <span>Corregir</span>
-                                      </button>
+                                      <span className={`status-pill validation-${record.hr_validation_status}`}>
+                                        {formatHrValidation(record.hr_validation_status)}
+                                      </span>
+                                      {record.hr_admin_name ? (
+                                        <div className="muted-cell">{record.hr_admin_name}</div>
+                                      ) : null}
+                                      {record.hr_validation_comment ? (
+                                        <div className="muted-cell">{record.hr_validation_comment}</div>
+                                      ) : null}
+                                    </td>
+                                    <td>
+                                      <div className="row-actions">
+                                        <button
+                                          className="secondary-button compact-action"
+                                          type="button"
+                                          onClick={() => openMarkCorrectionModal(record)}
+                                        >
+                                          <PencilLine />
+                                          <span>Corregir</span>
+                                        </button>
+                                        <button
+                                          className="secondary-button compact-action"
+                                          type="button"
+                                          onClick={() => handleHrMarkValidation(record, 'confirmed')}
+                                          disabled={validatingMarkId === record.id}
+                                        >
+                                          {validatingMarkId === record.id ? <Loader2 className="spin" /> : <ShieldCheck />}
+                                          <span>Confirmar</span>
+                                        </button>
+                                        <button
+                                          className="secondary-button compact-action"
+                                          type="button"
+                                          onClick={() => handleHrMarkValidation(record, 'rejected')}
+                                          disabled={validatingMarkId === record.id}
+                                        >
+                                          <X />
+                                          <span>Rechazar</span>
+                                        </button>
+                                        <button
+                                          className="secondary-button compact-action"
+                                          type="button"
+                                          onClick={() => handleHrMarkValidation(record, 'duplicated')}
+                                          disabled={validatingMarkId === record.id}
+                                        >
+                                          <ClipboardCheck />
+                                          <span>Duplicada</span>
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 ))}
@@ -3415,6 +3497,17 @@ function formatSupervisorValidation(status) {
   };
 
   return labels[status] || 'No requiere autorizacion';
+}
+
+function formatHrValidation(status) {
+  const labels = {
+    pending: 'Pendiente RRHH',
+    confirmed: 'Confirmada RRHH',
+    rejected: 'Rechazada RRHH',
+    duplicated: 'Duplicada RRHH',
+  };
+
+  return labels[status] || 'Pendiente RRHH';
 }
 
 function normalizeBackendCalculationRows(rows) {

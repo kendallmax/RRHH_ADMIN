@@ -1133,6 +1133,14 @@ td {
   height: 16px;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 260px;
+}
+
 .empty-state.compact {
   box-shadow: none;
   margin-top: 14px;
