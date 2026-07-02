@@ -182,9 +182,9 @@ begin
   left join public.employees e on e.auth_user_id = cl.user_id
   order by cl.work_date asc, employee_name asc;
 
-  update pg_temp.backend_hour_results
+  update pg_temp.backend_hour_results bhr
   set observations = array['Dia completo']
-  where cardinality(observations) = 0;
+  where cardinality(bhr.observations) = 0;
 
   if persist_results then
     for result_row in select * from pg_temp.backend_hour_results
