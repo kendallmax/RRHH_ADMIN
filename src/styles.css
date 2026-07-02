@@ -553,6 +553,12 @@ a {
 .filter-panel {
   margin-top: 20px;
   padding: 22px;
+  position: relative;
+  z-index: 2;
+}
+
+.filter-panel:has(.employee-multi-filter[open]) {
+  z-index: 80;
 }
 
 .filter-panel-header {
@@ -634,15 +640,16 @@ a {
 
 .employee-multi-popover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: 50%;
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 200;
+  transform: translateY(-50%);
   border: 1px solid var(--line);
   border-radius: 16px;
   background: #0b1626;
   box-shadow: var(--shadow);
-  padding: 8px;
+  padding: 6px;
 }
 
 .employee-multi-all {
@@ -653,28 +660,28 @@ a {
   color: #a9dcff;
   cursor: pointer;
   font: inherit;
-  min-height: 32px;
-  margin-bottom: 6px;
+  min-height: 28px;
+  margin-bottom: 4px;
   text-align: left;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 .employee-multi-list {
   display: grid;
-  gap: 2px;
-  max-height: 210px;
+  gap: 1px;
+  max-height: min(62vh, 520px);
   overflow: auto;
 }
 
 .employee-multi-option {
   display: flex !important;
   align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  padding: 4px 8px;
-  border-radius: 10px;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border-radius: 8px;
   color: var(--text) !important;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .employee-multi-option:hover {
@@ -682,8 +689,8 @@ a {
 }
 
 .employee-multi-option input {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
 }
 
