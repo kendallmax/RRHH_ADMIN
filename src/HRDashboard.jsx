@@ -205,7 +205,16 @@ export default function HRDashboard({ session }) {
     () => getVisibleEmployees(employees, showInactiveEmployees),
     [employees, showInactiveEmployees]
   );
+  const activeEmployees = useMemo(
+    () => getVisibleEmployees(employees, false),
+    [employees]
+  );
   const singleEmployeeFilter = getSingleSelectedEmployeeFilter(selectedEmployees);
+
+  useEffect(() => {
+    const activeEmployeeIds = new Set(activeEmployees.map((employee) => employee.user_id));
+    setSelectedEmployees((current) => current.filter((employeeId) => activeEmployeeIds.has(employeeId)));
+  }, [activeEmployees]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -1483,7 +1492,7 @@ export default function HRDashboard({ session }) {
               <div className="filter-grid">
                 <EmployeeMultiSelect
                   label="Empleado"
-                  employees={employees}
+                  employees={activeEmployees}
                   selectedEmployees={selectedEmployees}
                   setSelectedEmployees={setSelectedEmployees}
                 />
@@ -1669,7 +1678,7 @@ export default function HRDashboard({ session }) {
         ) : activeView === 'horas' ? (
           <>
             <ConsultationFilters
-              employees={employees}
+              employees={activeEmployees}
               selectedEmployees={selectedEmployees}
               setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
@@ -1723,7 +1732,7 @@ export default function HRDashboard({ session }) {
         ) : activeView === 'aprobacion' ? (
           <>
             <ConsultationFilters
-              employees={employees}
+              employees={activeEmployees}
               selectedEmployees={selectedEmployees}
               setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
@@ -1763,7 +1772,7 @@ export default function HRDashboard({ session }) {
             </section>
 
             <ConsultationFilters
-              employees={employees}
+              employees={activeEmployees}
               selectedEmployees={selectedEmployees}
               setSelectedEmployees={setSelectedEmployees}
               startDate={startDate}
