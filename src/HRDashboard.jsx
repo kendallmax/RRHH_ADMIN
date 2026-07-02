@@ -140,6 +140,7 @@ export default function HRDashboard({ session }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEmployeeSaving, setIsEmployeeSaving] = useState(false);
+  const [isEmployeeDirectoryRefreshing, setIsEmployeeDirectoryRefreshing] = useState(false);
   const [employeeForm, setEmployeeForm] = useState(EMPTY_EMPLOYEE_FORM);
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [employeeFeedback, setEmployeeFeedback] = useState('');
@@ -239,9 +240,20 @@ export default function HRDashboard({ session }) {
   };
 
   const refreshDirectory = async () => {
-    const { data, error } = await supabase.rpc('get_employee_directory');
-    if (error) throw error;
-    setEmployees(data || []);
+    setIsEmployeeDirectoryRefreshing(true);
+    setEmployeeError('');
+
+    try {
+      const { data, error } = await supabase.rpc('get_employee_directory');
+      if (error) throw error;
+      setEmployees(data || []);
+      setEmployeeFeedback('Lista actualizada.');
+    } catch (error) {
+      setEmployeeError(error.message || 'No fue posible recargar la lista.');
+      throw error;
+    } finally {
+      setIsEmployeeDirectoryRefreshing(false);
+    }
   };
 
   const refreshLocations = async ({ silentFallback = true } = {}) => {
@@ -1787,9 +1799,13 @@ export default function HRDashboard({ session }) {
                     />
                     <span>Mostrar inactivos</span>
                   </label>
-                  <button className="secondary-button" onClick={refreshDirectory}>
-                    <RefreshCcw />
-                    <span>Recargar lista</span>
+                  <button
+                    className="secondary-button"
+                    onClick={refreshDirectory}
+                    disabled={isEmployeeDirectoryRefreshing}
+                  >
+                    {isEmployeeDirectoryRefreshing ? <Loader2 className="spin" /> : <RefreshCcw />}
+                    <span>{isEmployeeDirectoryRefreshing ? 'Recargando...' : 'Recargar lista'}</span>
                   </button>
                   <button className="primary-button" onClick={openCreateEmployeeModal}>
                     <UserPlus />
